@@ -38,6 +38,12 @@ python3 -m http.server 8080
 
 Open http://localhost:8080
 
+## Play online
+
+After GitHub Pages is enabled (Settings → Pages → Source: **GitHub Actions**), the game is available at:
+
+**https://wontfixit-game.github.io/MoonWellDefense/**
+
 ## Notes
 
 - Scripts load in order; globals (`GAME`, `MP_CORE`, etc.) are shared across files.
