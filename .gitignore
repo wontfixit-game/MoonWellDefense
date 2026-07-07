@@ -1,0 +1,4 @@
+node_modules/
+package-lock.json
+scripts/game-screenshot.png
+scripts/game-full.png
