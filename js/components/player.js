@@ -133,8 +133,8 @@ if (this.camMode === 0) { // FPS
     cam.setAttribute('fov', '85');
     this.laser.setAttribute('visible', 'false');
 } else if (this.camMode === 1) { // TPS
-    pivot.setAttribute('animation__pos', 'property: position; to: 0.8 2.5 4.5; dur: 500; easing: easeInOutQuad');
-    pivot.setAttribute('animation__rot', 'property: rotation; to: -10 0 0; dur: 500; easing: easeInOutQuad');
+    pivot.setAttribute('animation__pos', 'property: position; to: 0.9 2.6 5.8; dur: 500; easing: easeInOutQuad');
+    pivot.setAttribute('animation__rot', 'property: rotation; to: -12 0 0; dur: 500; easing: easeInOutQuad');
     cam.setAttribute('fov', '85');
     this.laser.setAttribute('visible', 'false');
 } else { // Top-Down
@@ -420,6 +420,46 @@ if(this.lastState !== newState) {
     this.bow.setAttribute('animation-mixer', `clip: ${clip}; crossFadeDuration: 0.1; loop: repeat`);
 }
     },
+    getCrosshairTarget: function(maxRange) {
+        const camObj = this.camera.getObject3D('camera');
+        const camPos = new THREE.Vector3();
+        const camDir = new THREE.Vector3();
+        camObj.getWorldPosition(camPos);
+        camObj.getWorldDirection(camDir);
+
+        const raycaster = new THREE.Raycaster(camPos, camDir);
+        const validHitboxes = (GAME.enemyHitboxes || []).filter(h => h && h.parent);
+
+        if (validHitboxes.length > 0) {
+            const hits = raycaster.intersectObjects(validHitboxes, false);
+            if (hits.length > 0) {
+                const point = hits[0].point.clone();
+                return { point, inRange: camPos.distanceTo(point) <= maxRange };
+            }
+        }
+
+        const aimPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -1.2);
+        const planeHit = new THREE.Vector3();
+        if (raycaster.ray.intersectPlane(aimPlane, planeHit)) {
+            return { point: planeHit, inRange: camPos.distanceTo(planeHit) <= maxRange };
+        }
+
+        return { point: camPos.clone().add(camDir.multiplyScalar(maxRange)), inRange: false };
+    },
+
+    computeBallisticVelocity: function(origin, target, gravity, horizSpeed) {
+        const dx = target.x - origin.x;
+        const dy = target.y - origin.y;
+        const dz = target.z - origin.z;
+        const horizDist = Math.sqrt(dx * dx + dz * dz);
+        const flightTime = Math.max(0.12, horizDist / horizSpeed);
+        return new THREE.Vector3(
+            dx / flightTime,
+            (dy / flightTime) + 0.5 * gravity * flightTime,
+            dz / flightTime
+        );
+    },
+
     shoot: function() {
 if (!GAME.active || GAME.paused) return;
 
@@ -440,9 +480,10 @@ setTimeout(() => { this.nockedArrow.setAttribute('visible', 'true'); }, 100);
 
 const arrows = wasCharged ? (GAME.arrowsPerShot * 2) : GAME.arrowsPerShot; 
 const damage = GAME.baseDamage * GAME.dmgMultiplier * (wasCharged ? 2 : 1); 
-const speed = wasCharged ? 80 : 40; 
-const gravity = wasCharged ? 6.0 : 9.8;
-const drag = wasCharged ? 0.005 : 0.02;
+const ARROW_MAX_RANGE = 58;
+const horizSpeed = wasCharged ? 62 : 48;
+const gravity = wasCharged ? 2.8 : 3.8;
+const drag = 0.001;
 
 // --- PATCH START: Dynamic Arrow Colors ---
 let color;
@@ -450,48 +491,54 @@ const hasFire = GAME.fireLevel > 0;
 const hasZap = GAME.zapLevel > 0;
 
 if (hasFire && hasZap) {
-    // Both Elements: Purple (Normal) / Neon Magenta (Charged)
     color = wasCharged ? '#ff00ff' : '#800080'; 
 } else if (hasFire) {
-    // Fire Only: Red (Normal) / Yellow (Charged)
     color = wasCharged ? '#ffff00' : '#ff0000'; 
 } else if (hasZap) {
-    // Lightning Only: Blue (Normal) / White (Charged)
     color = wasCharged ? '#ffffff' : '#0000ff'; 
 } else {
-    // No Elements: Orange (Normal) / Cyan (Charged)
     color = wasCharged ? '#00ffff' : '#ffaa00'; 
 }
 // --- PATCH END ---
 
-let aimDir;
 const spawnPos = new THREE.Vector3();
 this.nockedArrow.object3D.getWorldPosition(spawnPos);
 
+let targetPoint;
+let inRange = true;
+
 if (this.camMode === 2) {
-    aimDir = this.aimVector.clone().normalize();
-    aimDir.y = 0.1;
-    aimDir.normalize();
+    const flatDir = this.aimVector.clone();
+    flatDir.y = 0;
+    if (flatDir.lengthSq() < 0.01) flatDir.set(0, 0, -1);
+    flatDir.normalize();
+    targetPoint = spawnPos.clone().add(flatDir.multiplyScalar(ARROW_MAX_RANGE));
+    targetPoint.y = 1.2;
 } else {
-    const cam = this.camera.getObject3D('camera');
-    const camPos = new THREE.Vector3(); cam.getWorldPosition(camPos);
-    const camDir = new THREE.Vector3(); cam.getWorldDirection(camDir);
-    const raycaster = new THREE.Raycaster(camPos, camDir);
-    const hits = raycaster.intersectObjects(GAME.enemyHitboxes, false);
-    let targetPoint;
-    if(hits.length > 0) targetPoint = hits[0].point;
-    else targetPoint = camPos.clone().add(camDir.multiplyScalar(100));
-    aimDir = new THREE.Vector3().subVectors(targetPoint, spawnPos).normalize();
+    const aim = this.getCrosshairTarget(ARROW_MAX_RANGE);
+    targetPoint = aim.point;
+    inRange = aim.inRange;
+    if (!inRange) {
+        const camObj = this.camera.getObject3D('camera');
+        const camPos = new THREE.Vector3();
+        const camDir = new THREE.Vector3();
+        camObj.getWorldPosition(camPos);
+        camObj.getWorldDirection(camDir);
+        targetPoint = camPos.clone().add(camDir.multiplyScalar(ARROW_MAX_RANGE));
+        targetPoint.y = Math.max(1.0, targetPoint.y);
+    }
 }
 
+const baseVelocity = this.computeBallisticVelocity(spawnPos, targetPoint, gravity, horizSpeed);
+
 for(let i=0; i<arrows; i++) { 
-    const dir = aimDir.clone(); 
+    const velocity = baseVelocity.clone();
     if(arrows > 1) { 
-        const spreadAmt = 0.05; 
+        const spreadAmt = 0.04; 
         const angleH = (i - (arrows-1)/2) * spreadAmt; 
-        dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), angleH); 
+        velocity.applyAxisAngle(new THREE.Vector3(0, 1, 0), angleH); 
     } 
-    this.spawnArrow(spawnPos, dir, damage, speed, gravity, drag, color); 
+    this.spawnArrow(spawnPos, velocity, damage, gravity, drag, color); 
 }
     },
     playInteract: function() {
@@ -584,22 +631,18 @@ if (this.el.object3D.position.distanceTo(wellPos) < 5.0) {
     } 
 }
     },
-    spawnArrow: function(pos, dir, dmg, spd, grav, drag, color) {
+    spawnArrow: function(pos, velocity, dmg, grav, drag, color) {
 const el = document.createElement('a-entity'); 
 el.setAttribute('position', pos); 
 
 const visual = document.createElement('a-entity');
 visual.setAttribute('rotation', '-90 0 0');
 
-// --- 修改重點 1: 增大箭矢模型 ---
-// 半徑從 0.08 提升到 0.15，長度從 0.6 提升到 0.9，讓它看起來更有殺傷力
 const head = document.createElement('a-entity');
 head.setAttribute('geometry', 'primitive: cone; radiusBottom: 0.15; radiusTop: 0; height: 0.9');
 head.setAttribute('material', 'shader: flat; color: #ffffaa');
-head.setAttribute('position', '0 0.45 0'); // 調整中心點，適應新的長度
+head.setAttribute('position', '0 0.45 0');
 
-// --- 修改重點 2: 增大光暈特效 ---
-// 半徑從 0.15 提升到 0.35，讓飛行軌跡更明顯
 const glow = document.createElement('a-entity');
 glow.setAttribute('geometry', 'primitive: sphere; radius: 0.25');
 glow.setAttribute('material', `shader: flat; color: ${color}; transparent: true; opacity: 0.6`);
@@ -608,10 +651,12 @@ visual.appendChild(head);
 visual.appendChild(glow);
 el.appendChild(visual);
 
-// 增加拖尾的寬度 (如果 trail-system 支援的話，這裡先保持顏色)
 el.setAttribute('meteor-trail', {color: color});
 
-el.setAttribute('arrow-physics', { vx: dir.x*spd, vy: dir.y*spd, vz: dir.z*spd, damage: dmg, gravity: grav, drag: drag }); 
+el.setAttribute('arrow-physics', { 
+    vx: velocity.x, vy: velocity.y, vz: velocity.z, 
+    damage: dmg, gravity: grav, drag: drag 
+}); 
 document.getElementById('projectile-container').appendChild(el);
     }
 });

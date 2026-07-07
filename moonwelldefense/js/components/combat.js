@@ -7,7 +7,8 @@ drag: {type:'number', default: 0.01}
     },
     init: function() { 
 this.velocity = new THREE.Vector3(this.data.vx, this.data.vy, this.data.vz); 
-this.life = 0.6; 
+const speed = this.velocity.length();
+this.life = Math.max(2.2, speed > 0 ? 70 / speed : 2.2);
 this.raycaster = new THREE.Raycaster(); 
 this.hitEntities = []; 
 this.isStuck = false; 
