@@ -53,7 +53,7 @@ js_files = {
     "js/save-shop.js": (592, 640),
     "js/config.js": (782, 850),
     "js/systems/trail-system.js": (641, 759),
-    "js/components/world.js": (760, 989),
+    "js/components/world.js": [(760, 778), (853, 989)],
     "js/components/player.js": (991, 1616),
     "js/components/combat.js": (1617, 1950),
     "js/components/enemies.js": (1952, 2329),
@@ -64,10 +64,12 @@ js_files = {
     "js/patch-soul-link.js": (3921, 4252),
 }
 
-for rel, (start, end) in js_files.items():
+for rel, ranges in js_files.items():
     path = OUT / rel
     path.parent.mkdir(parents=True, exist_ok=True)
-    content = strip_script(extract(start, end))
+    if isinstance(ranges, tuple) and len(ranges) == 2 and isinstance(ranges[0], int):
+        ranges = [ranges]
+    content = "".join(strip_script(extract(start, end)) for start, end in ranges)
     path.write_text(content, encoding="utf-8")
 
 # HTML body fragments
