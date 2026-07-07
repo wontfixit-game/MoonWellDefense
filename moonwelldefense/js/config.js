@@ -56,7 +56,7 @@ function initGame() {
 }
 
 const ENEMIES = {
-    grunt:    { model: '#model-grunt',  scale: '1 1 1',   hp: 120, move: 'Walk', atk: 'Attack', hit: 'HitRecieve', dmg: 20, speed: 0.060, headY: 1.6, radius: 1.2, range: 2.5, projectile: false },
+    grunt:    { model: '#model-grunt',  scale: '1 1 1',   hp: 90, move: 'Walk', atk: 'Attack', hit: 'HitRecieve', dmg: 15, speed: 0.055, headY: 1.6, radius: 1.2, range: 2.5, projectile: false },
     runner:   { model: '#model-runner', scale: '0.75 0.75 0.75', hp: 100,  move: 'Run', atk: 'Attack', hit: 'HitRecieve', dmg: 15,  speed: 0.110, headY: 1.5, radius: 1.2, range: 2.0, projectile: false },
     tank:     { model: '#model-tank',   scale: '1.6 1.6 1.6', hp: 800, move: 'Walk', atk: 'Attack', hit: 'HitRecieve', dmg: 40, speed: 0.040,  headY: 3.0, radius: 2.0, range: 3.0, projectile: false },
     wizard:   { model: '#model-wizard', scale: '1 1 1',   hp: 150,  move: 'Run', atk: 'Attack', hit: 'HitRecieve', dmg: 20, speed: 0.060, headY: 1.6, radius: 1.2, range: 15.0, projectile: true },

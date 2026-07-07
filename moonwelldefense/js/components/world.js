@@ -165,6 +165,8 @@ AFRAME.registerComponent('camera-follow', {
         
         if (ctrl && ctrl.camMode === 2) {
             this.el.object3D.rotation.y = 0;
+        } else if (ctrl && typeof ctrl.aimYaw === 'number') {
+            this.el.object3D.rotation.y = ctrl.aimYaw;
         } else {
             this.el.object3D.rotation.y = targetRot.y;
         }

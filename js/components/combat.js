@@ -90,7 +90,8 @@ const killed = logic.hit(finalDmg);
 this.triggerHitMarker(killed, isHeadshot);
 
 if (typeof spawnDamageText === 'function') spawnDamageText(Math.round(finalDmg), hitPoint, isHeadshot); 
-if (typeof spawnExplosion === 'function') spawnExplosion(hitPoint, 0xff0000, 8); 
+if (typeof spawnExplosion === 'function') spawnExplosion(hitPoint, isHeadshot ? 0xffaa00 : 0xff3333, isHeadshot ? 18 : 14);
+if (typeof triggerCameraShake === 'function') triggerCameraShake(isHeadshot ? 0.08 : 0.05, isHeadshot ? 180 : 120); 
 
 // --- IMPROVED FIRE VFX ---
 if(GAME.fireLevel > 0) { 
@@ -133,7 +134,17 @@ const marker = document.getElementById('hit-marker');
 if(marker) {
     marker.style.display = 'block'; marker.classList.remove('active'); void marker.offsetWidth; marker.classList.add('active'); marker.classList.remove('kill', 'headshot');
     if (killed) marker.classList.add('kill'); else if (headshot) marker.classList.add('headshot');
-    setTimeout(() => { marker.classList.remove('active'); marker.style.display = 'none'; }, 150);
+    const duration = killed ? 450 : (headshot ? 350 : 280);
+    setTimeout(() => { marker.classList.remove('active'); marker.style.display = 'none'; }, duration);
+}
+const flash = document.getElementById('hit-flash');
+if (flash) {
+    flash.classList.remove('active', 'kill', 'headshot');
+    void flash.offsetWidth;
+    flash.classList.add('active');
+    if (killed) flash.classList.add('kill');
+    else if (headshot) flash.classList.add('headshot');
+    setTimeout(() => flash.classList.remove('active', 'kill', 'headshot'), killed ? 200 : 120);
 }
     },
 
@@ -304,7 +315,7 @@ AFRAME.registerComponent('enemy-projectile', {
         const well = document.getElementById('moon-well');
         if (well) {
             const distW = myPos.distanceTo(well.object3D.position);
-            if (distW < 3.0) {
+            if (distW < 4.5) {
                 GAME.wellHP -= this.data.damage;
                 updateHUD();
                 if (GAME.wellHP <= 0) gameOver();

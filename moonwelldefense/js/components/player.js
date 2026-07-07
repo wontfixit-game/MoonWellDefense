@@ -18,6 +18,8 @@ this.keys = {}; this.triggerHeld = false; this.input = { x: 0, y: 0 }; this.last
 
 this.isAiming = false;
 this.aimVector = new THREE.Vector3(0, 0, -1);
+this.aimYaw = 0;
+this.bodyYaw = 0;
 this.touchStartTime = 0;
 this.camMode = 1; // 1: TPS (default)
 this.isFiringAnim = false;
@@ -73,7 +75,7 @@ document.addEventListener('mouseup', (e) => {
 document.addEventListener('mousemove', (e) => { 
     if(GAME.paused) return;
     if (document.pointerLockElement === document.body && !GAME.isMobile && this.camMode !== 2) { 
-        this.el.object3D.rotation.y -= e.movementX * 0.002; 
+        this.aimYaw -= e.movementX * 0.002; 
         this.camera.object3D.rotation.x -= e.movementY * 0.002; 
         this.camera.object3D.rotation.x = Math.max(-0.8, Math.min(0.8, this.camera.object3D.rotation.x)); 
     } else if (this.camMode === 2 && !GAME.isMobile) {
@@ -124,6 +126,8 @@ if (this.camMode === 2) {
     this.bow.setAttribute('rotation', '0 90 0');
 } else {
     document.getElementById('crosshair').style.display = 'block';
+    this.bodyYaw = this.el.object3D.rotation.y;
+    this.aimYaw = this.bodyYaw;
     this.bow.setAttribute('rotation', '0 270 0');
 }
 
@@ -261,8 +265,9 @@ aimZone.addEventListener('touchmove', e => {
     if(this.camMode === 2) return;
     for(let t of e.changedTouches) if(t.identifier===lookId) {
         const dx = t.clientX - lastX; const dy = t.clientY - lastY;
-        this.el.object3D.rotation.y -= dx*0.005;
+        this.aimYaw -= dx*0.005;
         this.camera.object3D.rotation.x -= dy*0.005;
+        this.camera.object3D.rotation.x = Math.max(-0.8, Math.min(0.8, this.camera.object3D.rotation.x));
         lastX=t.clientX; lastY=t.clientY;
     }
 });
@@ -383,26 +388,35 @@ if (this.camMode === 2) {
     }
 
 } else {
-    // --- FPS/TPS LOGIC ---
+    // --- FPS/TPS: camera-relative movement, body faces move dir, bow aims independently ---
     if(isMoving) {
-        const rot = this.el.object3D.rotation.y;
-        const cos = Math.cos(rot), sin = Math.sin(rot);
+        const cos = Math.cos(this.aimYaw), sin = Math.sin(this.aimYaw);
         const rdx = dx * cos + dz * sin;
         const rdz = -dx * sin + dz * cos;
-        
-        // --- FIX: 統一針對手機端的 FPS/TPS 移動速度進行 60% 減速 ---
+
         let currentSpeed = this.speed;
         if (GAME.isMobile) currentSpeed *= 0.6;
 
         let nextX = this.el.object3D.position.x + rdx * currentSpeed;
         let nextZ = this.el.object3D.position.z + rdz * currentSpeed;
-        
+
         let collided = false; 
         for (let obs of GAME.obstacles) { if (Math.sqrt((obs.x - nextX)**2 + (obs.z - nextZ)**2) < (obs.r + 0.5)) { collided = true; break; } }
         if(!collided && Math.sqrt(nextX**2 + nextZ**2) < 45) {
-            this.el.object3D.position.x = nextX; this.el.object3D.position.z = nextZ;
+            this.el.object3D.position.x = nextX;
+            this.el.object3D.position.z = nextZ;
         }
+
+        const targetBodyYaw = Math.atan2(rdx, rdz);
+        let diff = targetBodyYaw - this.bodyYaw;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        this.bodyYaw += diff * 0.22;
     }
+
+    this.el.object3D.rotation.y = this.bodyYaw;
+    const aimOffsetDeg = THREE.MathUtils.radToDeg(this.aimYaw - this.bodyYaw);
+    this.bow.setAttribute('rotation', `0 ${270 + aimOffsetDeg} 0`);
     this.trajectoryGuide.setAttribute('visible', 'false');
 }
 
@@ -410,8 +424,9 @@ if (this.camMode === 2) {
 if(this.isFiringAnim) return;
 
 let newState = "Idle_B";
-// Top-Down蓄力時用Aim，FPS/TPS 連射時保持 Idle_B (或用Shoot循環)
 if(this.camMode === 2 && this.triggerHeld) newState = isMoving ? "Walking_A" : "Aim"; 
+else if(this.camMode !== 2 && isMoving) newState = "Running_A";
+else if(this.camMode !== 2 && this.triggerHeld) newState = "Aim";
 else if(isMoving) newState = "Running_A";
 
 if(this.lastState !== newState) {
@@ -435,6 +450,24 @@ if(this.lastState !== newState) {
             if (hits.length > 0) {
                 const point = hits[0].point.clone();
                 return { point, inRange: camPos.distanceTo(point) <= maxRange };
+            }
+
+            // Soft aim assist: snap toward nearest enemy near crosshair
+            const assistAngle = THREE.MathUtils.degToRad(14);
+            let best = null;
+            let bestScore = assistAngle;
+            validHitboxes.forEach(h => {
+                const enemyPos = h.userData.el.object3D.position.clone();
+                enemyPos.y += 1.4;
+                const toEnemy = enemyPos.clone().sub(camPos).normalize();
+                const angle = camDir.angleTo(toEnemy);
+                if (angle < bestScore) {
+                    bestScore = angle;
+                    best = enemyPos;
+                }
+            });
+            if (best) {
+                return { point: best, inRange: camPos.distanceTo(best) <= maxRange };
             }
         }
 

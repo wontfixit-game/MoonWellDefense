@@ -205,7 +205,8 @@ function removeEarlyCallBtn() {
 }
 function startNextWave() { 
     GAME.inUpgradeMenu = false; document.getElementById('upgrade-menu').style.display = 'none'; 
-    GAME.wave++; const count = Math.floor(15 * Math.pow(1.1, GAME.wave - 1)); let cyclePhase = 0; if (GAME.wave > 2) { let adjusted = GAME.wave - 3; let blockIndex = Math.floor(adjusted / 3); let phaseMap = [1, 2, 3, 4, 0]; cyclePhase = phaseMap[blockIndex % 5]; } updateEnvironment(cyclePhase);
+    GAME.wave++;
+    const count = GAME.wave === 1 ? 6 : Math.floor(6 + 4 * Math.pow(1.12, GAME.wave - 2)); let cyclePhase = 0; if (GAME.wave > 2) { let adjusted = GAME.wave - 3; let blockIndex = Math.floor(adjusted / 3); let phaseMap = [1, 2, 3, 4, 0]; cyclePhase = phaseMap[blockIndex % 5]; } updateEnvironment(cyclePhase);
     GAME.toSpawn = count; const p = document.querySelector('#player'); if(p) p.object3D.position.set(0, 0, 16); 
     GAME.active = true; if(!GAME.isMobile && document.body.requestPointerLock && GAME.camMode !== 2) document.body.requestPointerLock(); updateHUD(); 
 }
@@ -332,7 +333,52 @@ function gameOver() {
 }
     function triggerVictory() { GAME.active = false; document.exitPointerLock(); PLAYER_SAVE.shards += GAME.shardsEarnedThisRun; saveGame(); document.getElementById('victory-screen').style.display = 'flex'; document.getElementById('game-ui').style.display = 'none'; }
 function spawnDamageText(val, pos, isCrit, isHeal) { const div = document.createElement('div'); div.className = isHeal ? 'damage-text heal-text' : (isCrit ? 'damage-text crit-text' : 'damage-text'); div.innerText = isCrit ? val + "!" : val; document.body.appendChild(div); const cam = document.querySelector('a-camera').getObject3D('camera'); const vec = pos.clone(); vec.y += 1.8; vec.project(cam); const x = (vec.x * .5 + .5) * window.innerWidth; const y = (-(vec.y * .5) + .5) * window.innerHeight; div.style.left = x + 'px'; div.style.top = y + 'px'; setTimeout(() => div.remove(), 800); }
-function spawnExplosion(pos, color, count) { const sys = document.querySelector('[particle-system]'); if(sys && sys.components['particle-system']) sys.components['particle-system'].spawn(pos, color, count); }
+function spawnExplosion(pos, color, count) {
+    count = count || 8;
+    const sys = document.querySelector('[particle-system]');
+    if (sys && sys.components['particle-system']) {
+        sys.components['particle-system'].spawn(pos, color, count);
+        return;
+    }
+    const scene = document.querySelector('a-scene');
+    if (!scene) return;
+    const hex = typeof color === 'number' ? color : parseInt(String(color).replace('#', ''), 16);
+    for (let i = 0; i < count; i++) {
+        const p = document.createElement('a-entity');
+        const c = '#' + hex.toString(16).padStart(6, '0');
+        p.setAttribute('geometry', 'primitive: sphere; radius: 0.15');
+        p.setAttribute('material', `shader: flat; color: ${c}; transparent: true; opacity: 0.95`);
+        p.setAttribute('position', pos);
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 1.5 + Math.random() * 3;
+        const off = `${(Math.cos(ang) * spd).toFixed(2)} ${(1 + Math.random() * 2.5).toFixed(2)} ${(Math.sin(ang) * spd).toFixed(2)}`;
+        p.setAttribute('animation', `property: position; to: ${pos.x + Math.cos(ang)*spd} ${pos.y + 1 + Math.random()*2} ${pos.z + Math.sin(ang)*spd}; dur: 350; easing: easeOutQuad`);
+        p.setAttribute('animation__fade', 'property: material.opacity; to: 0; dur: 350; easing: linear');
+        scene.appendChild(p);
+        setTimeout(() => { if (p.parentNode) p.parentNode.removeChild(p); }, 400);
+    }
+}
+function triggerCameraShake(intensity, duration) {
+    const pivot = document.getElementById('cam-pivot');
+    if (!pivot || !pivot.object3D) return;
+    const start = performance.now();
+    const basePos = pivot.object3D.position.clone();
+    const shake = () => {
+        const elapsed = performance.now() - start;
+        if (elapsed >= duration) {
+            pivot.object3D.position.copy(basePos);
+            return;
+        }
+        const falloff = 1 - (elapsed / duration);
+        pivot.object3D.position.set(
+            basePos.x + (Math.random() - 0.5) * intensity * falloff,
+            basePos.y + (Math.random() - 0.5) * intensity * 0.5 * falloff,
+            basePos.z + (Math.random() - 0.5) * intensity * falloff
+        );
+        requestAnimationFrame(shake);
+    };
+    shake();
+}
 function updateHUD() { try { document.querySelector('#hp-bar .bar-fill').style.width = Math.max(0, (GAME.playerHP/GAME.maxPlayerHP)*100) + '%'; document.querySelector('#well-bar .bar-fill').style.width = Math.max(0, (GAME.wellHP/GAME.maxWellHP)*100) + '%'; document.querySelector('#ascend-bar .bar-fill').style.width = Math.max(0, (GAME.ascension/GAME.maxAscension)*100) + '%'; document.getElementById('wave-text').innerText = GAME.wave; document.getElementById('stat-dmg').innerText = (GAME.dmgMultiplier*100).toFixed(0) + "%"; document.getElementById('stat-arr').innerText = GAME.arrowsPerShot; document.getElementById('stat-fire').innerText = GAME.fireLevel; document.getElementById('stat-zap').innerText = GAME.zapLevel; document.getElementById('gem-text').innerText = GAME.gems; const mgr = document.querySelector('[game-logic]'); const toSpawn = (mgr && mgr.components['game-logic']) ? mgr.components['game-logic'].toSpawn : GAME.toSpawn; document.getElementById('enemy-text').innerText = GAME.enemyHitboxes.length + toSpawn; } catch(e) {} }
 const mapCanvas = document.getElementById('minimap-canvas'); const mapCtx = mapCanvas.getContext('2d'); const MAP_RADIUS = 60; const MAP_SIZE = 150; 
 function updateMinimap() { try { mapCtx.clearRect(0, 0, MAP_SIZE, MAP_SIZE); const cx = MAP_SIZE / 2; const cy = MAP_SIZE / 2; const scale = (MAP_SIZE / 2) / MAP_RADIUS; mapCtx.fillStyle = '#00d2ff'; mapCtx.beginPath(); mapCtx.arc(cx, cy, 4, 0, Math.PI*2); mapCtx.fill(); mapCtx.fillStyle = '#ff0000'; const validEnemies = GAME.enemyHitboxes.filter(h => h && h.userData && h.userData.el && h.userData.el.object3D && h.userData.el.components['enemy-logic']); validEnemies.forEach(hitbox => { const pos = hitbox.userData.el.object3D.position; mapCtx.beginPath(); mapCtx.arc(cx + pos.x * scale, cy + pos.z * scale, 2.5, 0, Math.PI*2); mapCtx.fill(); }); mapCtx.fillStyle = '#880000'; const boss = GAME.enemyHitboxes.find(h => h && h.userData && h.userData.el && h.userData.el.components['boss-logic']); if (boss) { const pos = boss.userData.el.object3D.position; mapCtx.beginPath(); mapCtx.arc(cx + pos.x * scale, cy + pos.z * scale, 6, 0, Math.PI*2); mapCtx.fill(); } const playerEl = document.querySelector('#player'); if (playerEl) { const pPos = playerEl.object3D.position; const pRot = playerEl.object3D.rotation.y; const px = cx + pPos.x * scale; const py = cy + pPos.z * scale; mapCtx.save(); mapCtx.translate(px, py); mapCtx.rotate(-pRot); mapCtx.fillStyle = '#00ff00'; mapCtx.beginPath(); mapCtx.moveTo(0, -5); mapCtx.lineTo(4, 4); mapCtx.lineTo(-4, 4); mapCtx.fill(); mapCtx.restore(); } } catch(e) {} }

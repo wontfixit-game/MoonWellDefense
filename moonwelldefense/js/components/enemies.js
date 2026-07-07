@@ -47,14 +47,15 @@ AFRAME.registerComponent('enemy-logic', {
         let activeTarget = this.target; // Default: Well
         let minD = myPos.distanceTo(this.target.object3D.position); 
         
-        // V1.5 FIX: 設定 Moon Well 的物理半徑為 12.0
-        const WELL_RADIUS = 12.0;
-        // 取得怪物基礎射程 (Wizard=15, Others=2.5)
+        // Moon Well visual radius ~4.5m (scale 0.5 × model ~9m diameter)
+        const WELL_RADIUS = 4.5;
         let baseRange = (this.dataDef.projectile) ? (this.dataDef.range || 10.0) : 2.5;
+        const bodyRadius = this.dataDef.radius * (this.data.isElite ? 1.2 : 1.0);
         
-        // 如果目標是井，停止距離取 (怪物射程) 與 (井半徑) 的最大值
-        // 這樣 Wizard 會在 15m 停 (保持遠程), Grunt 會在 12m 停 (避免穿模)
-        let stopRange = Math.max(baseRange, WELL_RADIUS);
+        // Melee stops at well edge + weapon reach; ranged uses its own range
+        let stopRange = this.dataDef.projectile
+            ? baseRange
+            : (WELL_RADIUS + bodyRadius + 0.5);
 
         // 檢查玩家 (優先度高)
         const distP = myPos.distanceTo(this.player.object3D.position);
@@ -143,6 +144,32 @@ AFRAME.registerComponent('enemy-logic', {
         });
         this.el.sceneEl.appendChild(el);
     },
+    flashHit: function() {
+        const obj = this.el.getObject3D('mesh');
+        if (!obj) return;
+        obj.traverse(node => {
+            if (node.isMesh && node.material) {
+                if (!node.userData._origEmissive) {
+                    node.userData._origEmissive = node.material.emissive ? node.material.emissive.clone() : new THREE.Color(0);
+                    node.userData._origEmissiveInt = node.material.emissiveIntensity || 0;
+                }
+                node.material = node.material.clone();
+                node.material.emissive.setHex(0xffffff);
+                node.material.emissiveIntensity = 1.2;
+            }
+        });
+        setTimeout(() => {
+            if (this.isDead) return;
+            const mesh = this.el.getObject3D('mesh');
+            if (!mesh) return;
+            mesh.traverse(node => {
+                if (node.isMesh && node.userData._origEmissive) {
+                    node.material.emissive.copy(node.userData._origEmissive);
+                    node.material.emissiveIntensity = node.userData._origEmissiveInt;
+                }
+            });
+        }, 120);
+    },
     hit: function(dmg) {
         if(this.isDead) return false; this.data.hp -= dmg;
         if (this.data.hp <= 0) {
@@ -172,7 +199,8 @@ AFRAME.registerComponent('enemy-logic', {
             }, 1500); 
             return true; 
         } else { 
-            this.isHit = true; 
+            this.isHit = true;
+            this.flashHit();
             this.el.setAttribute('animation-mixer', {clip: this.dataDef.hit, loop: 'once'}); 
             setTimeout(() => { this.isHit = false; if(!this.isDead) this.el.setAttribute('animation-mixer', {clip: this.dataDef.move, loop: 'repeat'}); }, 400); 
             return false; 
@@ -189,7 +217,7 @@ AFRAME.registerComponent('enemy-logic', {
     },
     updateUI: function() { const fill = document.getElementById('boss-bar-fill'); const pct = Math.max(0, (this.data.hp / this.data.maxHp) * 100); fill.style.width = pct + '%'; },
     tick: function(t, dt) {
-        if(!GAME.active || GAME.paused) return; const myPos = this.el.object3D.position; if (myPos.distanceTo(this.target) < 8.0) { this.el.setAttribute('animation-mixer', {clip: 'Sword', loop: 'once'}); GAME.lastAttacker = this.el; GAME.wellHP = 0; gameOver(); updateHUD(); return; }
+        if(!GAME.active || GAME.paused) return; const myPos = this.el.object3D.position; if (myPos.distanceTo(this.target) < 5.5) { this.el.setAttribute('animation-mixer', {clip: 'Sword', loop: 'once'}); GAME.lastAttacker = this.el; GAME.wellHP = 0; gameOver(); updateHUD(); return; }
         const dir = new THREE.Vector3().subVectors(this.target, myPos).normalize(); this.el.object3D.position.add(dir.multiplyScalar(this.speed * (dt / 1000))); this.el.object3D.lookAt(this.target);
         this.trampleTimer += dt; if(this.trampleTimer > 200) { this.trampleTimer = 0; this.trampleForest(myPos); }
     },
@@ -344,7 +372,12 @@ AFRAME.registerComponent('game-logic', {
             GAME.survivalTime -= (dt / 1000); const timerEl = document.getElementById('event-timer'); const min = Math.floor(GAME.survivalTime / 60); const sec = Math.floor(GAME.survivalTime % 60); timerEl.innerText = `${min}:${sec < 10 ? '0'+sec : sec}`;
             this.ascensionSpawnTimer += dt; if (this.ascensionSpawnTimer > 200) { this.ascensionSpawnTimer = 0; this.spawnSiegeEnemy(); } updateMinimap(); return;
         }
-        if(GAME.toSpawn > 0) { this.timer += dt; if(this.timer > 1000 && GAME.enemyHitboxes.length < 20) { this.timer = 0; this.spawn(); } } updateMinimap();
+        if(GAME.toSpawn > 0) {
+            const spawnDelay = GAME.wave <= 2 ? 1800 : (GAME.wave <= 4 ? 1400 : 1000);
+            const maxOnField = GAME.wave <= 2 ? 8 : 20;
+            this.timer += dt;
+            if(this.timer > spawnDelay && GAME.enemyHitboxes.length < maxOnField) { this.timer = 0; this.spawn(); }
+        } updateMinimap();
     },
     spawn: function() {
         GAME.toSpawn--; const wave = GAME.wave; let types = ['grunt']; if(wave >= 3) types.push('runner'); if(wave >= 5) types.push('wizard'); if(wave >= 7) types.push('tank'); if(wave >= 9) types.push('skeleton');
@@ -358,7 +391,9 @@ AFRAME.registerComponent('game-logic', {
         const r = 75; 
         // --------------------
 
-        el.setAttribute('position', `${Math.cos(angle)*r} 0 ${Math.sin(angle)*r}`); const hp = ENEMIES[type].hp + (wave * 20); 
+        el.setAttribute('position', `${Math.cos(angle)*r} 0 ${Math.sin(angle)*r}`);
+        const hpScale = wave <= 3 ? 0.6 : 1.0;
+        const hp = Math.round(ENEMIES[type].hp + (wave * 10 * hpScale)); 
         const isElite = (Math.random() < 0.05);
         el.setAttribute('enemy-logic', {type: type, hp: isElite ? hp*2.5 : hp, maxHp: isElite ? hp*2.5 : hp, isElite: isElite}); this.el.sceneEl.appendChild(el); updateHUD();
     },
