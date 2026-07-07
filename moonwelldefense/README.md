@@ -40,9 +40,31 @@ Open http://localhost:8080
 
 ## Play online
 
-After GitHub Pages is enabled (Settings → Pages → Source: **GitHub Actions**), the game is available at:
+### Option A: Netlify (works with private repo)
 
-**https://wontfixit-game.github.io/MoonWellDefense/**
+1. Go to https://app.netlify.com/start
+2. Import **wontfixit-game/MoonWellDefense** from GitHub
+3. Build settings are already in `netlify.toml` (publish folder: `moonwelldefense`)
+4. Deploy — you'll get a URL like `https://random-name.netlify.app`
+
+### Option B: GitHub Pages (public repo only on free plan)
+
+This repo is currently **private**, so GitHub Pages may not show full settings unless you:
+
+- upgrade to a paid GitHub plan, **or**
+- make the repository **public**
+
+Then open: https://github.com/wontfixit-game/MoonWellDefense/settings/pages
+
+You should see **Pages** in the left sidebar under **Code and automation**.  
+If Pages is not enabled yet, you'll see a setup screen first (not "Build and deployment"):
+
+1. Click **Settings** (repo top bar — need admin access)
+2. Left sidebar → **Pages**
+3. Under **Source**, choose **GitHub Actions** (or **Deploy from a branch** → `main` → `/docs` if using branch deploy)
+4. Save, then check **Actions** tab for `Deploy Moon Well Defense`
+
+Live URL (after Pages is enabled): **https://wontfixit-game.github.io/MoonWellDefense/**
 
 ## Notes
 
