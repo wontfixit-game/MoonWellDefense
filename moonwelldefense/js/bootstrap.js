@@ -1,0 +1,1 @@
+document.querySelector('a-scene').addEventListener('loaded', () => { loadSave(); document.getElementById('loading-area').style.display = 'none'; const vrBtn = document.querySelector('.a-enter-vr'); if(vrBtn) vrBtn.style.display = 'none'; });
