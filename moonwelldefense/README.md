@@ -19,7 +19,8 @@ moonwelldefense/
     ├── patch-v63.js        # Arrow physics + MP integration patches
     ├── patch-soul-link.js  # Ghost/revive mode overrides
     ├── systems/
-    │   └── trail-system.js # Particle trail object pool
+    │   ├── trail-system.js # Particle trail object pool
+    │   └── trap-system.js  # Placeable traps (spikes, tar, brimstone) + hotbar
     └── components/
         ├── world.js        # well-manager, forest-generator, camera
         ├── player.js       # universal-controls
