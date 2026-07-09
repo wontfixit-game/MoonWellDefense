@@ -495,6 +495,7 @@ if(this.lastState !== newState) {
 
     shoot: function() {
 if (!GAME.active || GAME.paused) return;
+if (GAME.selectedTrap && typeof TRAP_SYSTEM !== 'undefined') { TRAP_SYSTEM.place(); return; }
 
 // Trigger Animation
 this.isFiringAnim = true;
