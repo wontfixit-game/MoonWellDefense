@@ -317,6 +317,7 @@ AFRAME.registerComponent('enemy-projectile', {
             const distW = myPos.distanceTo(well.object3D.position);
             if (distW < 4.5) {
                 GAME.wellHP -= this.data.damage;
+                GAME.riftPoints = Math.max(0, Math.ceil(GAME.wellHP / 150));
                 updateHUD();
                 if (GAME.wellHP <= 0) gameOver();
                 this.hitEffect();

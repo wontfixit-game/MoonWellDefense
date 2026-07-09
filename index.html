@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Moon Well Defense</title>
+    <title>Orcs Must Die: Rift Defense</title>
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.4.0/dist/aframe-extras.min.js"></script>
@@ -82,10 +82,11 @@
 
 
     <div id="start-screen">
-        <h1 id="game-title">Moon Well Defense</h1>
+        <h1 id="game-title">ORCS MUST DIE</h1>
+        <p style="color:#ffaa44; font-size:14px; letter-spacing:3px; margin-top:-15px; margin-bottom:10px;">RIFT DEFENSE</p>
         <div id="shard-display"><div class="shard-icon"></div> <span id="menu-shards">0</span></div>
-        <button class="main-menu-btn primary" onclick="initGame()">ENTER FOREST</button>
-        <button class="main-menu-btn" onclick="openMoonAltar()">MOON ALTAR</button>
+        <button class="main-menu-btn primary" onclick="initGame()">DEFEND THE RIFT</button>
+        <button class="main-menu-btn" onclick="openMoonAltar()">WAR MAGE SHOP</button>
         <button class="main-menu-btn" onclick="document.getElementById('start-screen').style.display='none';document.getElementById('mp-lobby').classList.add('active')">VERSUS MODE</button>
         <div id="loading-area">
             <div id="loader-bar"><div id="loader-progress"></div></div>
@@ -139,6 +140,49 @@
         <button class="pause-btn" onclick="location.reload()">QUIT</button>
     </div>
 
+    <!-- PREP PHASE OVERLAY -->
+    <div id="prep-overlay" style="display:none">
+        <div id="prep-header-bar">
+            <div id="prep-wave-label">WAVE 1 — PREPARE YOUR DEFENSES</div>
+            <div id="prep-timer-wrap">
+                <span id="prep-timer">30</span>
+                <span style="font-size:12px; opacity:0.7">sec</span>
+            </div>
+        </div>
+        <div id="trap-shop-bar">
+            <div class="trap-btn" id="trap-btn-spike" onclick="selectTrap('spike')">
+                <div class="trap-icon">&#9876;</div>
+                <div class="trap-name">Spike Trap</div>
+                <div class="trap-cost">&#128128; 100</div>
+            </div>
+            <div class="trap-btn" id="trap-btn-tar" onclick="selectTrap('tar')">
+                <div class="trap-icon">&#9679;</div>
+                <div class="trap-name">Tar Trap</div>
+                <div class="trap-cost">&#128128; 75</div>
+            </div>
+            <div class="trap-btn" id="trap-btn-barricade" onclick="selectTrap('barricade')">
+                <div class="trap-icon">&#9646;</div>
+                <div class="trap-name">Barricade</div>
+                <div class="trap-cost">&#128128; 50</div>
+            </div>
+            <div class="trap-btn" id="trap-btn-arrow_wall" onclick="selectTrap('arrow_wall')">
+                <div class="trap-icon">&#8680;</div>
+                <div class="trap-name">Arrow Wall</div>
+                <div class="trap-cost">&#128128; 150</div>
+            </div>
+            <div class="trap-btn" id="trap-btn-boom_barrel" onclick="selectTrap('boom_barrel')">
+                <div class="trap-icon">&#128293;</div>
+                <div class="trap-name">Boom Barrel</div>
+                <div class="trap-cost">&#128128; 200</div>
+            </div>
+        </div>
+        <div id="prep-selected-info">Select a trap above to place it on the path</div>
+        <div id="prep-footer">
+            <div id="prep-skull-display">&#128128; <span id="prep-skull-count">0</span> SKULLS</div>
+            <button id="start-wave-btn" onclick="endPrepPhase()">START WAVE &#9658;</button>
+        </div>
+    </div>
+
     <div id="game-ui">
         <div id="damage-indicator"></div>
         <div id="boss-hud"><div id="boss-name">THE TITAN</div><div id="boss-bar-container"><div id="boss-bar-fill"></div></div></div>
@@ -147,16 +191,15 @@
         <div id="event-timer">01:30</div>
         <div id="hud-panel">
             <div class="stat-row">HP <div class="bar-container" id="hp-bar"><div class="bar-fill"></div></div></div>
-            <div class="stat-row">CORE <div class="bar-container" id="well-bar"><div class="bar-fill"></div></div></div>
+            <div class="stat-row" style="color:#aa44ff">RIFT <div class="bar-container" id="well-bar"><div class="bar-fill" style="background:linear-gradient(90deg,#6600cc,#aa44ff)"></div></div><span id="rift-text" style="font-size:10px;color:#aa44ff;margin-left:4px">20/20</span></div>
             <div class="stat-row">ASCEND <div class="bar-container" id="ascend-bar"><div class="bar-fill"></div></div></div>
             <div class="stat-row" style="margin-top:5px; color:#ffd700">WAVE <span id="wave-text">1</span></div>
             <div class="stat-row">FOES <span id="enemy-text">0</span></div>
-            <div class="stat-row" style="color:#00ff00">GEMS <span id="gem-text">0</span></div>
+            <div class="stat-row" style="color:#dddddd">&#128128; <span id="skull-text">0</span></div>
+            <div class="stat-row" style="color:#00ff00;font-size:11px">GEMS <span id="gem-text">0</span></div>
             <div style="font-size: 10px; color: #ccc; margin-top:5px;">
-                DMG: <span id="stat-dmg">100%</span> | SHOT: <span id="stat-arr">1</span><br>
-                FIRE: <span id="stat-fire">0</span> | ZAP: <span id="stat-zap">0</span>
+                DMG: <span id="stat-dmg">100%</span> | SHOT: <span id="stat-arr">1</span>
             </div>
-            <div style="font-size: 10px; color: #ffd700; margin-top: 5px; font-style: italic;">[V] at Well: +10% (5G)<br>[C] Toggle View</div>
         </div>
         
         <div id="minimap-container"><canvas id="minimap-canvas" width="150" height="150"></canvas></div>
@@ -278,6 +321,7 @@
     <script src="js/config.js?v=6"></script>
     <script src="js/systems/trail-system.js?v=6"></script>
     <script src="js/systems/particle-system.js?v=6"></script>
+    <script src="js/systems/trap-system.js?v=1"></script>
     <script src="js/components/world.js?v=6"></script>
     <script src="js/components/player.js?v=6"></script>
     <script src="js/components/combat.js?v=6"></script>

@@ -10,7 +10,8 @@ body { margin: 0; overflow: hidden; user-select: none; font-family: 'Cinzel', se
 }
 #victory-screen { display: none; background: rgba(255, 215, 0, 0.2); backdrop-filter: blur(10px); }
 
-h1 { font-size: 4rem; text-shadow: 0 0 20px #00d2ff; margin-bottom: 10px; cursor: pointer; user-select: none; }
+h1 { font-size: 4rem; text-shadow: 0 0 20px #ff6600, 0 0 40px #cc3300; margin-bottom: 10px; cursor: pointer; user-select: none; }
+#game-title { color: #ff6600; letter-spacing: 4px; }
 h1:active { transform: scale(0.98); }
 
 .main-menu-btn {
@@ -289,6 +290,107 @@ h1:active { transform: scale(0.98); }
 .stat-row { font-size: 12px !important; }
 /* --- END PATCH --- */
         
+
+/* ================================================================
+   ORCS MUST DIE — PREP PHASE & TRAP SHOP
+   ================================================================ */
+
+/* Full-screen prep overlay — shown during placement phase */
+#prep-overlay {
+    position: fixed; inset: 0; z-index: 3000;
+    display: none; flex-direction: column;
+    pointer-events: none; /* children opt-in */
+}
+
+/* Top banner */
+#prep-header-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 20px;
+    background: linear-gradient(90deg, rgba(60,20,0,0.95) 0%, rgba(30,10,0,0.85) 100%);
+    border-bottom: 2px solid #cc5500;
+    pointer-events: auto;
+}
+#prep-wave-label {
+    color: #ffaa44; font-size: 18px; font-weight: bold; letter-spacing: 2px;
+    text-shadow: 0 0 10px #ff6600;
+}
+#prep-timer-wrap {
+    font-size: 36px; font-weight: 900; color: #ffd700;
+    text-shadow: 0 0 15px #ff6600;
+    display: flex; align-items: baseline; gap: 4px;
+}
+#prep-timer { font-family: 'Cinzel', serif; }
+
+/* Trap shop bar (just below header) */
+#trap-shop-bar {
+    display: flex; gap: 8px; padding: 10px 20px;
+    background: rgba(20,8,0,0.9); border-bottom: 1px solid #663300;
+    pointer-events: auto; flex-wrap: wrap;
+}
+.trap-btn {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 8px 14px; min-width: 80px;
+    background: linear-gradient(145deg, #1a0c00, #0d0600);
+    border: 2px solid #663300; border-radius: 6px;
+    cursor: pointer; color: #fff; font-family: 'Cinzel', serif;
+    transition: all 0.15s; position: relative;
+}
+.trap-btn:hover {
+    border-color: #ff8800; background: #2a1400;
+    transform: translateY(-3px); box-shadow: 0 4px 12px rgba(255,136,0,0.3);
+}
+.trap-btn.selected {
+    border-color: #00ff88; background: #002211;
+    box-shadow: 0 0 15px rgba(0,255,136,0.4);
+}
+.trap-icon { font-size: 22px; line-height: 1.2; }
+.trap-name { font-size: 10px; color: #cc9966; margin-top: 2px; text-align: center; }
+.trap-cost { font-size: 11px; color: #ffd700; font-weight: bold; margin-top: 2px; }
+
+/* Selected trap description */
+#prep-selected-info {
+    padding: 6px 20px;
+    background: rgba(15,5,0,0.85);
+    color: #ccaa88; font-size: 13px; font-family: 'Lato', sans-serif;
+    border-bottom: 1px solid #441100;
+    pointer-events: none;
+}
+.skull-cost { color: #ffd700; font-weight: bold; }
+
+/* Footer: skull count + start wave button */
+#prep-footer {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 20px;
+    pointer-events: auto;
+}
+#prep-skull-display {
+    background: rgba(20,8,0,0.9); border: 2px solid #663300;
+    padding: 10px 18px; color: #ffd700; font-size: 18px;
+    font-weight: bold; font-family: 'Cinzel', serif;
+    border-radius: 6px; letter-spacing: 1px;
+}
+#start-wave-btn {
+    padding: 14px 30px; font-size: 18px; font-weight: 900;
+    background: linear-gradient(135deg, #cc5500 0%, #ff8800 100%);
+    border: 2px solid #fff; border-radius: 6px;
+    color: #fff; cursor: pointer; font-family: 'Cinzel', serif;
+    text-transform: uppercase; letter-spacing: 2px;
+    box-shadow: 0 0 20px rgba(255,136,0,0.5);
+    transition: all 0.2s; animation: pulseOrange 2s infinite;
+}
+#start-wave-btn:hover { transform: scale(1.06); filter: brightness(1.2); }
+@keyframes pulseOrange {
+    0%, 100% { box-shadow: 0 0 20px rgba(255,136,0,0.5); }
+    50%       { box-shadow: 0 0 35px rgba(255,136,0,0.9); }
+}
+
+/* Skull counter in HUD */
+#skull-text { color: #ffd700 !important; }
+
+/* Rift bar override */
+#well-bar .bar-fill {
+    background: linear-gradient(90deg, #6600cc, #aa44ff) !important;
+}
 
 /* MP UI STYLES */
 #mp-lobby { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10000; display: none; flex-direction: column; align-items: center; justify-content: center; }

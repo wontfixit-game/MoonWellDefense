@@ -45,7 +45,7 @@ window.addEventListener('keyup', e => this.keys[e.code] = false);
 
 // --- MOUSE CONTROLS (DESKTOP) ---
 document.addEventListener('mousedown', (e) => {
-    if(!GAME.active || GAME.paused || GAME.isMobile) return;
+    if(!GAME.active || GAME.paused || GAME.isMobile || GAME.prepPhase) return;
     this.triggerHeld = true; // 標記為按住
     
     if(this.camMode === 2) {
@@ -308,7 +308,7 @@ if(nearest) {
 } else { this.shoot(); }
     },
     tick: function (t, dt) {
-if (!GAME.active || GAME.paused) return;
+if ((!GAME.active && !GAME.prepPhase) || GAME.paused) return;
 
 const prompt = document.getElementById('interaction-prompt');
 const wellPos = document.getElementById('moon-well').object3D.position;
@@ -338,10 +338,9 @@ if (this.camMode !== 2 && !this.triggerHeld) {
 }
 
 // --- 3. FPS/TPS Rapid Fire (按住時連射) ---
-if (this.camMode !== 2 && this.triggerHeld) {
+if (this.camMode !== 2 && this.triggerHeld && GAME.active) {
     const timeSince = Date.now() - GAME.lastShotTime;
     if (timeSince > this.fireRate) {
-        // 連射時不使用蓄力攻擊，除非是第一發(已被 Passive Charge)
         this.shoot();
     }
 }

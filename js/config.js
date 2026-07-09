@@ -1,17 +1,37 @@
-       // 找到原本的 GAME 物件，修改為：
 const GAME = {
-    started: false, active: false, paused: false, 
+    started: false, active: false, paused: false,
     wave: 0, inUpgradeMenu: false, gems: 0, toSpawn: 0, totalKills: 0,
-    ascension: 0, maxAscension: 100, isAscending: false, survivalTime: 90, isBossPhase: false, 
-    vampiricLevel: 0, spectralLevel: 0, timePhase: 0, playerHP: 100, maxPlayerHP: 100, wellHP: 3000, maxWellHP: 3000, 
+    ascension: 0, maxAscension: 100, isAscending: false, survivalTime: 90, isBossPhase: false,
+    vampiricLevel: 0, spectralLevel: 0, timePhase: 0, playerHP: 100, maxPlayerHP: 100,
+    wellHP: 3000, maxWellHP: 3000,
     isMobile: /Android|iPhone|iPad/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1,
     baseDamage: 40, dmgMultiplier: 1.0, arrowsPerShot: 1, fireLevel: 0, zapLevel: 0,
     lastShotTime: 0, isCharged: false,
     enemyHitboxes: [], allies: [], allyHitboxes: [], obstacles: [], trees: [], lastAttacker: null,
     shardsEarnedThisRun: 0, magnetRange: 2.0, allyCmdState: 0,
-    // --- 新增以下兩個變數 ---
-    combo: 0, comboTimer: 0
+    combo: 0, comboTimer: 0,
+    // --- OMD additions ---
+    skulls: 0,
+    riftPoints: 20,
+    maxRiftPoints: 20,
+    prepPhase: false,
+    prepTimer: 0,
+    selectedTrap: null,
+    placedTraps: []
 };
+
+// Enemy path waypoints — 3 lanes converging on the Rift (0,0,0)
+const PATH_WAYPOINTS = [
+    // Lane 0 — East
+    [{x:75,z:0},{x:50,z:4},{x:27,z:2},{x:10,z:1},{x:0,z:0}],
+    // Lane 1 — Northwest
+    [{x:-37.5,z:64.9},{x:-25,z:45},{x:-13,z:24},{x:-5,z:9},{x:0,z:0}],
+    // Lane 2 — Southwest
+    [{x:-37.5,z:-64.9},{x:-25,z:-45},{x:-13,z:-24},{x:-5,z:-9},{x:0,z:0}]
+];
+
+// How many rift points each enemy type costs when reaching the rift
+const RIFT_COSTS = { grunt:1, runner:1, tank:3, wizard:2, skeleton:5 };
 
 function initGame() { 
     try {
@@ -42,6 +62,7 @@ function initGame() {
     // ▲▲▲ 修改結束 ▲▲▲
         }
         GAME.shardsEarnedThisRun = 0; GAME.isBossPhase = false;
+        GAME.skulls = 0; GAME.riftPoints = GAME.maxRiftPoints; GAME.placedTraps = [];
         document.getElementById('boss-hud').style.display = 'none';
         const vrEnabled = document.getElementById('set-vr').checked;
         const vrBtn = document.querySelector('.a-enter-vr');
@@ -51,7 +72,7 @@ function initGame() {
         GAME.started = true; 
         document.getElementById('minimap-container').onclick = (e) => { e.stopPropagation(); togglePause(); };
         const marker = document.getElementById('hit-marker'); marker.classList.remove('active'); marker.style.display = 'none';
-        startNextWave(); 
+        startPrepPhase();
     } catch(e) { console.error("Init Error", e); alert("Error starting game. Check console."); }
 }
 
