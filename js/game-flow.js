@@ -1,6 +1,16 @@
     function checkWave() { 
-    if(GAME.isAscending) return; if(GAME.inUpgradeMenu) return; 
-    if(GAME.enemyHitboxes.length === 0 && GAME.toSpawn <= 0) { GAME.active = false; GAME.inUpgradeMenu = true; document.exitPointerLock(); GAME.shardsEarnedThisRun += 50; showUpgrades(); } updateHUD(); 
+    if(GAME.isAscending) return; if(GAME.inBuildPhase) return; 
+    if(GAME.enemyHitboxes.length === 0 && GAME.toSpawn <= 0) { 
+        GAME.active = false; 
+        document.exitPointerLock(); 
+        GAME.shardsEarnedThisRun += 50;
+        const waveBonus = Math.floor(GAME.wave * 20 + 50);
+        GAME.gems += waveBonus;
+        spawnDamageText(`+${waveBonus} COINS`, document.getElementById('moon-well').object3D.position, true, true);
+        if (typeof TRAP_SYSTEM !== 'undefined') TRAP_SYSTEM.enterBuildPhase();
+        updateHUD(); 
+    } 
+    updateHUD(); 
 }
 
 
@@ -204,7 +214,9 @@ function removeEarlyCallBtn() {
     if(btn) btn.remove();
 }
 function startNextWave() { 
-    GAME.inUpgradeMenu = false; document.getElementById('upgrade-menu').style.display = 'none'; 
+    GAME.inUpgradeMenu = false; 
+    document.getElementById('upgrade-menu').style.display = 'none';
+    if (typeof TRAP_SYSTEM !== 'undefined') TRAP_SYSTEM.exitBuildPhase();
     GAME.wave++;
     const count = GAME.wave === 1 ? 6 : Math.floor(6 + 4 * Math.pow(1.12, GAME.wave - 2)); let cyclePhase = 0; if (GAME.wave > 2) { let adjusted = GAME.wave - 3; let blockIndex = Math.floor(adjusted / 3); let phaseMap = [1, 2, 3, 4, 0]; cyclePhase = phaseMap[blockIndex % 5]; } updateEnvironment(cyclePhase);
     GAME.toSpawn = count; const p = document.querySelector('#player'); if(p) p.object3D.position.set(0, 0, 16); 
@@ -310,7 +322,7 @@ function gameOver() {
 
     // 6. UI 顯示
     const title = document.getElementById('go-title'); 
-    if (isCore) { title.innerText = "CORE DESTROYED"; } 
+    if (isCore) { title.innerText = "RIFT DESTROYED"; } 
     else { title.innerText = "YOU HAVE FALLEN"; } 
     
     PLAYER_SAVE.shards += GAME.shardsEarnedThisRun; 
@@ -381,7 +393,7 @@ function triggerCameraShake(intensity, duration) {
 }
 function updateHUD() { try { document.querySelector('#hp-bar .bar-fill').style.width = Math.max(0, (GAME.playerHP/GAME.maxPlayerHP)*100) + '%'; document.querySelector('#well-bar .bar-fill').style.width = Math.max(0, (GAME.wellHP/GAME.maxWellHP)*100) + '%'; document.querySelector('#ascend-bar .bar-fill').style.width = Math.max(0, (GAME.ascension/GAME.maxAscension)*100) + '%'; document.getElementById('wave-text').innerText = GAME.wave; document.getElementById('stat-dmg').innerText = (GAME.dmgMultiplier*100).toFixed(0) + "%"; document.getElementById('stat-arr').innerText = GAME.arrowsPerShot; document.getElementById('stat-fire').innerText = GAME.fireLevel; document.getElementById('stat-zap').innerText = GAME.zapLevel; document.getElementById('gem-text').innerText = GAME.gems; const mgr = document.querySelector('[game-logic]'); const toSpawn = (mgr && mgr.components['game-logic']) ? mgr.components['game-logic'].toSpawn : GAME.toSpawn; document.getElementById('enemy-text').innerText = GAME.enemyHitboxes.length + toSpawn; } catch(e) {} }
 const mapCanvas = document.getElementById('minimap-canvas'); const mapCtx = mapCanvas.getContext('2d'); const MAP_RADIUS = 60; const MAP_SIZE = 150; 
-function updateMinimap() { try { mapCtx.clearRect(0, 0, MAP_SIZE, MAP_SIZE); const cx = MAP_SIZE / 2; const cy = MAP_SIZE / 2; const scale = (MAP_SIZE / 2) / MAP_RADIUS; mapCtx.fillStyle = '#00d2ff'; mapCtx.beginPath(); mapCtx.arc(cx, cy, 4, 0, Math.PI*2); mapCtx.fill(); mapCtx.fillStyle = '#ff0000'; const validEnemies = GAME.enemyHitboxes.filter(h => h && h.userData && h.userData.el && h.userData.el.object3D && h.userData.el.components['enemy-logic']); validEnemies.forEach(hitbox => { const pos = hitbox.userData.el.object3D.position; mapCtx.beginPath(); mapCtx.arc(cx + pos.x * scale, cy + pos.z * scale, 2.5, 0, Math.PI*2); mapCtx.fill(); }); mapCtx.fillStyle = '#880000'; const boss = GAME.enemyHitboxes.find(h => h && h.userData && h.userData.el && h.userData.el.components['boss-logic']); if (boss) { const pos = boss.userData.el.object3D.position; mapCtx.beginPath(); mapCtx.arc(cx + pos.x * scale, cy + pos.z * scale, 6, 0, Math.PI*2); mapCtx.fill(); } const playerEl = document.querySelector('#player'); if (playerEl) { const pPos = playerEl.object3D.position; const pRot = playerEl.object3D.rotation.y; const px = cx + pPos.x * scale; const py = cy + pPos.z * scale; mapCtx.save(); mapCtx.translate(px, py); mapCtx.rotate(-pRot); mapCtx.fillStyle = '#00ff00'; mapCtx.beginPath(); mapCtx.moveTo(0, -5); mapCtx.lineTo(4, 4); mapCtx.lineTo(-4, 4); mapCtx.fill(); mapCtx.restore(); } } catch(e) {} }
+function updateMinimap() { try { mapCtx.clearRect(0, 0, MAP_SIZE, MAP_SIZE); const cx = MAP_SIZE / 2; const cy = MAP_SIZE / 2; const scale = (MAP_SIZE / 2) / MAP_RADIUS; mapCtx.fillStyle = '#aa44ff'; mapCtx.beginPath(); mapCtx.arc(cx, cy, 4, 0, Math.PI*2); mapCtx.fill(); if (GAME.traps) { mapCtx.fillStyle = '#ffd700'; GAME.traps.forEach(trap => { mapCtx.beginPath(); mapCtx.arc(cx + trap.x * scale, cy + trap.z * scale, 2, 0, Math.PI*2); mapCtx.fill(); }); } mapCtx.fillStyle = '#ff0000'; const validEnemies = GAME.enemyHitboxes.filter(h => h && h.userData && h.userData.el && h.userData.el.object3D && h.userData.el.components['enemy-logic']); validEnemies.forEach(hitbox => { const pos = hitbox.userData.el.object3D.position; mapCtx.beginPath(); mapCtx.arc(cx + pos.x * scale, cy + pos.z * scale, 2.5, 0, Math.PI*2); mapCtx.fill(); }); mapCtx.fillStyle = '#880000'; const boss = GAME.enemyHitboxes.find(h => h && h.userData && h.userData.el && h.userData.el.components['boss-logic']); if (boss) { const pos = boss.userData.el.object3D.position; mapCtx.beginPath(); mapCtx.arc(cx + pos.x * scale, cy + pos.z * scale, 6, 0, Math.PI*2); mapCtx.fill(); } const playerEl = document.querySelector('#player'); if (playerEl) { const pPos = playerEl.object3D.position; const pRot = playerEl.object3D.rotation.y; const px = cx + pPos.x * scale; const py = cy + pPos.z * scale; mapCtx.save(); mapCtx.translate(px, py); mapCtx.rotate(-pRot); mapCtx.fillStyle = '#00ff00'; mapCtx.beginPath(); mapCtx.moveTo(0, -5); mapCtx.lineTo(4, 4); mapCtx.lineTo(-4, 4); mapCtx.fill(); mapCtx.restore(); } } catch(e) {} }
 function togglePause() { if (!GAME.active) return; GAME.paused = !GAME.paused; const menu = document.getElementById('pause-menu'); if (GAME.paused) { menu.style.display = 'flex'; document.exitPointerLock(); } else { menu.style.display = 'none'; if (!GAME.isMobile && GAME.camMode !== 2) document.body.requestPointerLock(); } }
 // --- 新增：Combo 系統輔助函數 ---
 function addCombo() {

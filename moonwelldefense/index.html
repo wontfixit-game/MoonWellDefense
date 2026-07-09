@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Moon Well Defense</title>
+    <title>Orcs Must Die: Rift Defense</title>
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.4.0/dist/aframe-extras.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/main.css?v=6">
-    <link rel="stylesheet" href="css/ghost.css?v=6">
+    <link rel="stylesheet" href="css/main.css?v=7">
+    <link rel="stylesheet" href="css/ghost.css?v=7">
 </head>
 <body>
 <div id="net-stat">NET: OFFLINE</div>
@@ -82,10 +82,11 @@
 
 
     <div id="start-screen">
-        <h1 id="game-title">Moon Well Defense</h1>
+        <h1 id="game-title">Orcs Must Die</h1>
+        <p style="color:#aaa; margin: -10px 0 20px 0; font-family: Lato, sans-serif;">Defend the Rift. Place traps. Slaughter orcs.</p>
         <div id="shard-display"><div class="shard-icon"></div> <span id="menu-shards">0</span></div>
-        <button class="main-menu-btn primary" onclick="initGame()">ENTER FOREST</button>
-        <button class="main-menu-btn" onclick="openMoonAltar()">MOON ALTAR</button>
+        <button class="main-menu-btn primary" onclick="initGame()">DEFEND THE RIFT</button>
+        <button class="main-menu-btn" onclick="openMoonAltar()">TRAP UPGRADES</button>
         <button class="main-menu-btn" onclick="document.getElementById('start-screen').style.display='none';document.getElementById('mp-lobby').classList.add('active')">VERSUS MODE</button>
         <div id="loading-area">
             <div id="loader-bar"><div id="loader-progress"></div></div>
@@ -107,7 +108,7 @@
     </div>
 
     <div id="moon-altar-screen">
-        <h1 style="color: #aaddff; margin-bottom: 20px;">The Moon Altar</h1>
+        <h1 style="color: #aaddff; margin-bottom: 20px;">War Mage's Armory</h1>
         <div class="shop-grid" id="shop-container"></div>
         <button class="main-menu-btn" onclick="closeMoonAltar()" style="margin-top: 20px;">RETURN</button>
         <div id="shard-display" style="top: 20px; right: 20px;"><div class="shard-icon"></div> <span id="shop-shards">0</span></div>
@@ -129,7 +130,7 @@
 
     <div id="victory-screen">
         <h1 style="color: #ffd700; font-size: 60px; text-shadow: 0 0 20px gold;">ASCENSION COMPLETE</h1>
-        <p style="font-size: 24px;">The Titan has been felled. The Moon Well is safe.</p>
+        <p style="font-size: 24px;">The Titan has been felled. The Rift is sealed.</p>
         <button id="restart-btn" class="main-menu-btn primary" onclick="location.reload()">RETURN TO CAMP</button>
     </div>
 
@@ -147,16 +148,17 @@
         <div id="event-timer">01:30</div>
         <div id="hud-panel">
             <div class="stat-row">HP <div class="bar-container" id="hp-bar"><div class="bar-fill"></div></div></div>
-            <div class="stat-row">CORE <div class="bar-container" id="well-bar"><div class="bar-fill"></div></div></div>
+            <div class="stat-row">RIFT <div class="bar-container" id="well-bar"><div class="bar-fill"></div></div></div>
             <div class="stat-row">ASCEND <div class="bar-container" id="ascend-bar"><div class="bar-fill"></div></div></div>
             <div class="stat-row" style="margin-top:5px; color:#ffd700">WAVE <span id="wave-text">1</span></div>
             <div class="stat-row">FOES <span id="enemy-text">0</span></div>
-            <div class="stat-row" style="color:#00ff00">GEMS <span id="gem-text">0</span></div>
+            <div class="stat-row" style="color:#ffd700">COINS <span id="gem-text">0</span></div>
+            <div class="stat-row" style="color:#aaa; font-size:11px">TRAPS <span id="trap-count-text">0</span></div>
             <div style="font-size: 10px; color: #ccc; margin-top:5px;">
                 DMG: <span id="stat-dmg">100%</span> | SHOT: <span id="stat-arr">1</span><br>
                 FIRE: <span id="stat-fire">0</span> | ZAP: <span id="stat-zap">0</span>
             </div>
-            <div style="font-size: 10px; color: #ffd700; margin-top: 5px; font-style: italic;">[V] at Well: +10% (5G)<br>[C] Toggle View</div>
+            <div style="font-size: 10px; color: #ffd700; margin-top: 5px; font-style: italic;">[B] Place Trap | [V] Sell<br>[1-6] Trap Select | [C] View</div>
         </div>
         
         <div id="minimap-container"><canvas id="minimap-canvas" width="150" height="150"></canvas></div>
@@ -179,6 +181,13 @@
     <div id="cam-btn" class="action-btn">CAM</div>
     </div>
 </div>
+    <div id="build-phase-panel">
+        <h2>BUILD PHASE</h2>
+        <p>Place traps along the lanes, then call the next wave.</p>
+        <div class="build-stats">COINS: <span id="build-coin-text">0</span></div>
+        <button class="main-menu-btn primary pointer-auto" id="start-wave-btn" onclick="startNextWave()">CALL WAVES</button>
+    </div>
+    <div id="trap-hotbar"></div>
     <div id="upgrade-menu"><h2 style="color:#ffd700; font-size: 42px;">Area Secured</h2><div class="card-container" id="card-list"></div></div>
 
     <a-scene physics="debug: false" renderer="antialias: true; colorManagement: true; shadowMapEnabled: true;" fog="type: exponential; color: #3388cc; density: 0.01" vr-mode-ui="enabled: true">
@@ -231,7 +240,10 @@
         </a-cylinder>
         
         <a-entity id="moon-well" position="0 0 0" scale="0.5 0.5 0.5" well-manager shadow="receive: true; cast: true">
-            <a-light type="point" color="#00d2ff" intensity="1.2" distance="12" decay="2" position="0 4 0"></a-light>
+            <a-light type="point" color="#aa44ff" intensity="2.0" distance="15" decay="2" position="0 4 0"></a-light>
+            <a-torus-knot radius="3" radius-tubular="0.3" position="0 3 0" rotation="90 0 0"
+                material="color: #8800ff; emissive: #4400aa; emissiveIntensity: 0.8; opacity: 0.7; transparent: true; shader: standard"
+                animation="property: rotation; to: 90 360 0; loop: true; dur: 8000; easing: linear"></a-torus-knot>
             <a-cylinder visible="false" position="0 2 0" radius="2.5" height="4"></a-cylinder>
         </a-entity>
 
@@ -274,19 +286,20 @@
 <div id="net-notification">THE SOUL HAS FALLEN - AWAITING REVIVE</div>
 
 
-    <script src="js/save-shop.js?v=6"></script>
-    <script src="js/config.js?v=6"></script>
-    <script src="js/systems/trail-system.js?v=6"></script>
-    <script src="js/systems/particle-system.js?v=6"></script>
-    <script src="js/components/world.js?v=6"></script>
-    <script src="js/components/player.js?v=6"></script>
-    <script src="js/components/combat.js?v=6"></script>
-    <script src="js/components/enemies.js?v=6"></script>
-    <script src="js/game-flow.js?v=6"></script>
-    <script src="js/bootstrap.js?v=6"></script>
+    <script src="js/systems/trap-system.js?v=7"></script>
+    <script src="js/save-shop.js?v=7"></script>
+    <script src="js/config.js?v=7"></script>
+    <script src="js/systems/trail-system.js?v=7"></script>
+    <script src="js/systems/particle-system.js?v=7"></script>
+    <script src="js/components/world.js?v=7"></script>
+    <script src="js/components/player.js?v=7"></script>
+    <script src="js/components/combat.js?v=7"></script>
+    <script src="js/components/enemies.js?v=7"></script>
+    <script src="js/game-flow.js?v=7"></script>
+    <script src="js/bootstrap.js?v=7"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <script src="js/multiplayer.js?v=6"></script>
-    <script src="js/patch-v63.js?v=6"></script>
-    <script src="js/patch-soul-link.js?v=6"></script>
+    <script src="js/multiplayer.js?v=7"></script>
+    <script src="js/patch-v63.js?v=7"></script>
+    <script src="js/patch-soul-link.js?v=7"></script>
 </body>
 </html>

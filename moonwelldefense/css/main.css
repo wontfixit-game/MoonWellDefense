@@ -342,3 +342,34 @@ a-scene {
 
 #zone-move { position: absolute; top: 0; left: 0; width: 50%; height: 100%; pointer-events: auto; }
 #zone-look { position: absolute; top: 0; right: 0; width: 50%; height: 100%; pointer-events: auto; }
+
+/* OMD Build Phase & Trap Hotbar */
+#build-phase-panel {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: rgba(10, 5, 20, 0.92); border: 2px solid #ffd700;
+    padding: 30px 50px; border-radius: 8px; z-index: 5000;
+    display: none; flex-direction: column; align-items: center; text-align: center;
+    pointer-events: auto; box-shadow: 0 0 40px rgba(255, 215, 0, 0.3);
+}
+#build-phase-panel h2 { color: #ffd700; font-size: 36px; margin: 0 0 10px 0; letter-spacing: 4px; }
+#build-phase-panel p { color: #aaa; font-family: Lato, sans-serif; margin: 0 0 15px 0; }
+.build-stats { color: #ffd700; font-size: 22px; margin-bottom: 15px; font-weight: bold; }
+#build-phase-panel .main-menu-btn { width: 260px; padding: 15px; font-size: 1.2rem; }
+
+#trap-hotbar {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    display: none; gap: 8px; z-index: 2000; pointer-events: auto;
+    background: rgba(0, 0, 0, 0.75); padding: 10px 15px; border-radius: 8px;
+    border: 1px solid #555;
+}
+.trap-slot {
+    width: 90px; padding: 8px 6px; background: #1a1a2e; border: 2px solid #444;
+    border-radius: 6px; cursor: pointer; text-align: center; transition: all 0.15s;
+    font-family: Lato, sans-serif;
+}
+.trap-slot:hover { border-color: #ffd700; transform: translateY(-3px); }
+.trap-slot.active { border-color: #ffd700; background: #2a2a1e; box-shadow: 0 0 12px rgba(255, 215, 0, 0.4); }
+.trap-key { display: block; font-size: 11px; color: #888; font-weight: bold; }
+.trap-name { display: block; font-size: 10px; color: #fff; margin: 3px 0; line-height: 1.2; }
+.trap-cost { display: block; font-size: 11px; color: #ffd700; font-weight: bold; }
+

@@ -147,7 +147,7 @@ AFRAME.registerComponent('resource-drop', {
 
     const dist2D = Math.sqrt(Math.pow(pPos.x - myPos.x, 2) + Math.pow(pPos.z - myPos.z, 2));
     if(dist2D < 2.5) {
-GAME.gems++; updateHUD(); spawnDamageText("+1 GEM", myPos, false, true); this.el.parentNode.removeChild(this.el);
+GAME.gems++; updateHUD(); spawnDamageText("+1 COIN", myPos, false, true); this.el.parentNode.removeChild(this.el);
     }
 }
 });

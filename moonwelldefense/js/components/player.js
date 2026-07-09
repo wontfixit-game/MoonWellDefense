@@ -31,14 +31,15 @@ this.lastState = "Idle_B";
 // --- EVENT LISTENERS ---
        window.addEventListener('keydown', e => { 
     if(e.code === 'Escape') togglePause(); 
-    if(e.code === 'KeyB') this.summonAlly(); 
+    if(e.code === 'KeyB') this.placeTrap(); 
+    if(e.code === 'KeyG') this.summonAlly();
     if(e.code === 'KeyV') this.interactAction();
     if(e.code === 'KeyC') this.toggleCamera();
-    
-    // --- ADD THIS LINE ---
-    if(e.code === 'KeyR') this.toggleAllyCommand(); 
-    // --------------------
-
+    if(e.code === 'KeyR') this.toggleAllyCommand();
+    const digit = parseInt(e.code.replace('Digit', ''), 10);
+    if (digit >= 1 && digit <= 6 && typeof TRAP_HOTBAR !== 'undefined') {
+        TRAP_SYSTEM.selectType(TRAP_HOTBAR[digit - 1]);
+    }
     this.keys[e.code] = true; 
         });
 window.addEventListener('keyup', e => this.keys[e.code] = false);
@@ -99,7 +100,7 @@ if (GAME.isMobile) {
     this.setupTouch(); 
 }
 
-const btnB = document.getElementById('build-btn'); if(btnB) btnB.addEventListener('click', () => this.summonAlly());
+const btnB = document.getElementById('build-btn'); if(btnB) btnB.addEventListener('click', () => this.placeTrap());
 const btnF = document.getElementById('interact-btn'); if(btnF) btnF.addEventListener('click', () => this.interactAction());
 const btnC = document.getElementById('cam-btn'); if(btnC) btnC.addEventListener('click', () => this.toggleCamera());
 
@@ -308,16 +309,28 @@ if(nearest) {
 } else { this.shoot(); }
     },
     tick: function (t, dt) {
-if (!GAME.active || GAME.paused) return;
+if ((!GAME.active && !GAME.inBuildPhase) || GAME.paused) return;
+
+if (GAME.inBuildPhase && typeof TRAP_SYSTEM !== 'undefined') {
+    TRAP_SYSTEM.updatePreview(this.el);
+    TRAP_SYSTEM.updateBuildUI();
+}
 
 const prompt = document.getElementById('interaction-prompt');
+if (GAME.inBuildPhase) {
+    prompt.style.display = 'block';
+    prompt.innerHTML = `[B] Place Trap | [V] Sell | [1-6] Select`;
+    prompt.style.color = '#ffd700';
+} else {
 const wellPos = document.getElementById('moon-well').object3D.position;
 if(this.el.object3D.position.distanceTo(wellPos) < 5 && !GAME.isAscending) {
-    prompt.style.display = 'block'; prompt.innerHTML = `[V] PURIFY WELL (5G)`; prompt.style.color = (GAME.gems>=5)?'#00ffff':'#ff0000';
+    prompt.style.display = 'block'; prompt.innerHTML = `[V] SEAL RIFT (5c)`; prompt.style.color = (GAME.gems>=5)?'#00ffff':'#ff0000';
 } else { prompt.style.display = 'none'; }
+}
 
-// --- 1. Top-Down Active Charge (需按住) ---
-if (this.camMode === 2 && this.triggerHeld) {
+if (GAME.inBuildPhase) {
+    // Movement only during build — no combat
+} else if (this.camMode === 2 && this.triggerHeld) {
     const duration = Date.now() - this.touchStartTime;
     if (duration > 1000 && !GAME.isCharged) {
         GAME.isCharged = true;
@@ -327,8 +340,7 @@ if (this.camMode === 2 && this.triggerHeld) {
 }
 
 // --- 2. FPS/TPS Passive Charge (不按住時自動蓄力) ---
-// FIX: 移除了 !GAME.isMobile，確保手機 FPS 也能自動蓄力
-if (this.camMode !== 2 && !this.triggerHeld) {
+if (!GAME.inBuildPhase && this.camMode !== 2 && !this.triggerHeld) {
     const timeSinceShot = Date.now() - GAME.lastShotTime;
     if (timeSinceShot > 1000 && !GAME.isCharged) {
         GAME.isCharged = true;
@@ -338,7 +350,7 @@ if (this.camMode !== 2 && !this.triggerHeld) {
 }
 
 // --- 3. FPS/TPS Rapid Fire (按住時連射) ---
-if (this.camMode !== 2 && this.triggerHeld) {
+if (!GAME.inBuildPhase && this.camMode !== 2 && this.triggerHeld) {
     const timeSince = Date.now() - GAME.lastShotTime;
     if (timeSince > this.fireRate) {
         // 連射時不使用蓄力攻擊，除非是第一發(已被 Passive Charge)
@@ -578,9 +590,13 @@ for(let i=0; i<arrows; i++) {
 this.bow.setAttribute('animation-mixer', 'clip: Interact; clampWhenFinished: true; loop: once; crossFadeDuration: 0.1');
 setTimeout(() => { this.lastState = "ForceReset"; }, 1000);
     },
+    placeTrap: function() {
+        if (typeof TRAP_SYSTEM === 'undefined') return;
+        TRAP_SYSTEM.placeTrap(this.el);
+    },
     summonAlly: function() {
 if(GAME.gems >= 3) { GAME.gems -= 3; updateHUD(); this.playInteract(); const el = document.createElement('a-entity'); const pos = this.el.object3D.position.clone(); const dir = new THREE.Vector3(); this.el.object3D.getWorldDirection(dir); pos.add(dir.multiplyScalar(3)); pos.y = 0; el.setAttribute('position', pos); el.setAttribute('ally-logic', 'level: 1'); this.el.sceneEl.appendChild(el); spawnExplosion(pos, 0x00ffff, 10); } 
-else { spawnDamageText("Need 3 Gems", this.el.object3D.position, true, false); }
+else { spawnDamageText("Need 3 Coins", this.el.object3D.position, true, false); }
     },
 
     toggleAllyCommand: function() {
@@ -612,6 +628,10 @@ if (btn) {
 }
     },
     interactAction: function() {
+if (GAME.inBuildPhase && typeof TRAP_SYSTEM !== 'undefined') {
+    TRAP_SYSTEM.sellTrapAt(this.el);
+    return;
+}
 if(GAME.isAscending && !GAME.isBossPhase) return;
 
 // 1. Check for nearby Allies first

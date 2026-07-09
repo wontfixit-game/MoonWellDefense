@@ -5,6 +5,7 @@ AFRAME.registerComponent('enemy-logic', {
         this.target = document.querySelector('#moon-well'); 
         this.player = document.querySelector('#player');
         this.isDead = false; this.isHit = false; 
+        this.slowFactor = 1; this.slowTimer = 0;
         this.el.setAttribute('gltf-model', this.dataDef.model); 
         if (this.data.isElite) {
             this.el.addEventListener('model-loaded', () => {
@@ -26,9 +27,11 @@ AFRAME.registerComponent('enemy-logic', {
         this.el.object3D.add(this.hitbox); 
         GAME.enemyHitboxes.push(this.hitbox);
     },
-    tick: function() {
+    tick: function(t, dt) {
         if(!GAME.active || GAME.paused || this.isDead) return;
+        if (this.slowTimer > 0) { this.slowTimer -= (dt || 16); if (this.slowTimer <= 0) this.slowFactor = 1; }
         const myPos = this.el.object3D.position;
+        if (typeof TRAP_SYSTEM !== 'undefined') TRAP_SYSTEM.checkEnemyOnTraps(this.el, this);
         
         // Separation
         const separation = new THREE.Vector3(); let count = 0;
@@ -79,6 +82,7 @@ AFRAME.registerComponent('enemy-logic', {
         });
         
         let speed = this.dataDef.speed; if(this.data.isElite) speed *= 1.2; 
+        speed *= (this.slowFactor || 1);
         
         if (minD > stopRange) { 
             // Move
@@ -366,13 +370,15 @@ if(this.currentHP <= 0 && !this.isDead) {
 AFRAME.registerComponent('game-logic', {
     init: function() { this.toSpawn = 0; this.timer = 0; this.ascensionSpawnTimer = 0; },
     tick: function(t, dt) {
-        if(!GAME.active || GAME.paused) return; 
-        if(GAME.combo > 0) { GAME.comboTimer -= dt; if(GAME.comboTimer <= 0) { GAME.combo = 0; updateComboUI(); } }
-        if (GAME.isAscending) {
+        if(GAME.paused) return;
+        if (!GAME.active && !GAME.inBuildPhase) return;
+        if(GAME.combo > 0 && GAME.active) { GAME.comboTimer -= dt; if(GAME.comboTimer <= 0) { GAME.combo = 0; updateComboUI(); } }
+        if (GAME.isAscending && GAME.active) {
             GAME.survivalTime -= (dt / 1000); const timerEl = document.getElementById('event-timer'); const min = Math.floor(GAME.survivalTime / 60); const sec = Math.floor(GAME.survivalTime % 60); timerEl.innerText = `${min}:${sec < 10 ? '0'+sec : sec}`;
             this.ascensionSpawnTimer += dt; if (this.ascensionSpawnTimer > 200) { this.ascensionSpawnTimer = 0; this.spawnSiegeEnemy(); } updateMinimap(); return;
         }
-        if(GAME.toSpawn > 0) {
+        if (typeof TRAP_SYSTEM !== 'undefined' && GAME.active) TRAP_SYSTEM.tickTraps(dt);
+        if(GAME.active && GAME.toSpawn > 0) {
             const spawnDelay = GAME.wave <= 2 ? 1800 : (GAME.wave <= 4 ? 1400 : 1000);
             const maxOnField = GAME.wave <= 2 ? 8 : 20;
             this.timer += dt;

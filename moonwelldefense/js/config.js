@@ -1,7 +1,8 @@
        // 找到原本的 GAME 物件，修改為：
 const GAME = {
     started: false, active: false, paused: false, 
-    wave: 0, inUpgradeMenu: false, gems: 0, toSpawn: 0, totalKills: 0,
+    wave: 0, inUpgradeMenu: false, inBuildPhase: false, gems: 0, toSpawn: 0, totalKills: 0,
+    traps: [],
     ascension: 0, maxAscension: 100, isAscending: false, survivalTime: 90, isBossPhase: false, 
     vampiricLevel: 0, spectralLevel: 0, timePhase: 0, playerHP: 100, maxPlayerHP: 100, wellHP: 3000, maxWellHP: 3000, 
     isMobile: /Android|iPhone|iPad/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1,
@@ -24,7 +25,7 @@ function initGame() {
             GAME.zapLevel = parseInt(document.getElementById('set-zap').value) || 0;
         } else {
             GAME.wave = 0;
-            GAME.gems = PLAYER_SAVE.upgrades.gems * 3; 
+            GAME.gems = 600 + PLAYER_SAVE.upgrades.gems * 3; 
             GAME.dmgMultiplier = 1.0 + (PLAYER_SAVE.upgrades.damage * 0.1);
             GAME.magnetRange = 2.0 + (PLAYER_SAVE.upgrades.magnet * 2.0);
             GAME.arrowsPerShot = 1; GAME.fireLevel = 0; GAME.zapLevel = 0;
@@ -51,7 +52,8 @@ function initGame() {
         GAME.started = true; 
         document.getElementById('minimap-container').onclick = (e) => { e.stopPropagation(); togglePause(); };
         const marker = document.getElementById('hit-marker'); marker.classList.remove('active'); marker.style.display = 'none';
-        startNextWave(); 
+        if (typeof TRAP_SYSTEM !== 'undefined') TRAP_SYSTEM.init();
+        TRAP_SYSTEM.enterBuildPhase();
     } catch(e) { console.error("Init Error", e); alert("Error starting game. Check console."); }
 }
 
