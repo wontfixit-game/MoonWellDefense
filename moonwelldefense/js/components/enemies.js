@@ -4,7 +4,7 @@ AFRAME.registerComponent('enemy-logic', {
         this.dataDef = ENEMIES[this.data.type]; 
         this.target = document.querySelector('#moon-well'); 
         this.player = document.querySelector('#player');
-        this.isDead = false; this.isHit = false; 
+        this.isDead = false; this.isHit = false; this.trapSlowUntil = 0; this.trapSlowFactor = 1;
         this.el.setAttribute('gltf-model', this.dataDef.model); 
         if (this.data.isElite) {
             this.el.addEventListener('model-loaded', () => {
@@ -78,7 +78,8 @@ AFRAME.registerComponent('enemy-logic', {
             } 
         });
         
-        let speed = this.dataDef.speed; if(this.data.isElite) speed *= 1.2; 
+        let speed = this.dataDef.speed; if(this.data.isElite) speed *= 1.2;
+        if (this.trapSlowUntil && Date.now() < this.trapSlowUntil) speed *= this.trapSlowFactor || 0.5;
         
         if (minD > stopRange) { 
             // Move

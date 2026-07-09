@@ -7,7 +7,8 @@ const GAME = {
     isMobile: /Android|iPhone|iPad/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1,
     baseDamage: 40, dmgMultiplier: 1.0, arrowsPerShot: 1, fireLevel: 0, zapLevel: 0,
     lastShotTime: 0, isCharged: false,
-    enemyHitboxes: [], allies: [], allyHitboxes: [], obstacles: [], trees: [], lastAttacker: null,
+    enemyHitboxes: [], allies: [], allyHitboxes: [], traps: [], obstacles: [], trees: [], lastAttacker: null,
+    trapCost: 4, trapUpgradeCost: 5, trapKills: 0,
     shardsEarnedThisRun: 0, magnetRange: 2.0, allyCmdState: 0,
     // --- 新增以下兩個變數 ---
     combo: 0, comboTimer: 0
@@ -42,6 +43,7 @@ function initGame() {
     // ▲▲▲ 修改結束 ▲▲▲
         }
         GAME.shardsEarnedThisRun = 0; GAME.isBossPhase = false;
+        GAME.traps = []; GAME.trapKills = 0;
         document.getElementById('boss-hud').style.display = 'none';
         const vrEnabled = document.getElementById('set-vr').checked;
         const vrBtn = document.querySelector('.a-enter-vr');

@@ -312,7 +312,14 @@ if (!GAME.active || GAME.paused) return;
 
 const prompt = document.getElementById('interaction-prompt');
 const wellPos = document.getElementById('moon-well').object3D.position;
-if(this.el.object3D.position.distanceTo(wellPos) < 5 && !GAME.isAscending) {
+const nearTrap = (typeof getNearbyTrap === 'function') ? getNearbyTrap(this.el.object3D.position, 4.0) : null;
+if(nearTrap && nearTrap.components['moon-trap'] && !GAME.isAscending) {
+    const lvl = nearTrap.components['moon-trap'].data.level;
+    const maxed = lvl >= MOON_TRAP.maxLevel;
+    prompt.style.display = 'block';
+    prompt.innerHTML = maxed ? `MOON SNARE LV ${lvl} MAX` : `[V] UPGRADE SNARE (${GAME.trapUpgradeCost}G)`;
+    prompt.style.color = maxed ? '#ffd700' : ((GAME.gems>=GAME.trapUpgradeCost)?'#00ffff':'#ff0000');
+} else if(this.el.object3D.position.distanceTo(wellPos) < 5 && !GAME.isAscending) {
     prompt.style.display = 'block'; prompt.innerHTML = `[V] PURIFY WELL (5G)`; prompt.style.color = (GAME.gems>=5)?'#00ffff':'#ff0000';
 } else { prompt.style.display = 'none'; }
 
@@ -579,6 +586,7 @@ this.bow.setAttribute('animation-mixer', 'clip: Interact; clampWhenFinished: tru
 setTimeout(() => { this.lastState = "ForceReset"; }, 1000);
     },
     summonAlly: function() {
+if (typeof buildMoonTrap === 'function') { buildMoonTrap(this); return; }
 if(GAME.gems >= 3) { GAME.gems -= 3; updateHUD(); this.playInteract(); const el = document.createElement('a-entity'); const pos = this.el.object3D.position.clone(); const dir = new THREE.Vector3(); this.el.object3D.getWorldDirection(dir); pos.add(dir.multiplyScalar(3)); pos.y = 0; el.setAttribute('position', pos); el.setAttribute('ally-logic', 'level: 1'); this.el.sceneEl.appendChild(el); spawnExplosion(pos, 0x00ffff, 10); } 
 else { spawnDamageText("Need 3 Gems", this.el.object3D.position, true, false); }
     },
@@ -613,6 +621,8 @@ if (btn) {
     },
     interactAction: function() {
 if(GAME.isAscending && !GAME.isBossPhase) return;
+
+if (typeof tryUpgradeNearbyTrap === 'function' && tryUpgradeNearbyTrap(this.el, this)) return;
 
 // 1. Check for nearby Allies first
 let closestAlly = null; 

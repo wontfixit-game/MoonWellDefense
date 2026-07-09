@@ -112,8 +112,8 @@ _uCtrl.tick = function(t, dt) {
     
     const prompt = document.getElementById('interaction-prompt');
     const wellPos = document.getElementById('moon-well').object3D.position;
-    const myPos = this.el.object3D.position;
-    const wellDist = myPos.distanceTo(wellPos);
+    let myPos = this.el.object3D.position;
+    let wellDist = myPos.distanceTo(wellPos);
 
     // 1. Ghost Mode (Highest Priority)
     if (GAME.isGhost) {
@@ -124,7 +124,21 @@ _uCtrl.tick = function(t, dt) {
         return;
     }
 
+    if(_origUTick) _origUTick.call(this, t, dt);
+    myPos = this.el.object3D.position;
+    wellDist = myPos.distanceTo(wellPos);
+
+    const nearTrap = (typeof getNearbyTrap === 'function') ? getNearbyTrap(myPos, 4.0) : null;
+    if (nearTrap && nearTrap.components['moon-trap'] && !GAME.isAscending) {
+        const lvl = nearTrap.components['moon-trap'].data.level;
+        const maxed = lvl >= MOON_TRAP.maxLevel;
+        prompt.style.display = 'block';
+        prompt.innerHTML = maxed
+            ? `<span style="color:#ffd700">MOON SNARE LV ${lvl} MAX</span>`
+            : `<span style="color:${GAME.gems>=GAME.trapUpgradeCost ? '#00ffff' : '#ff5555'}">[ACT] UPGRADE SNARE (${GAME.trapUpgradeCost}G)</span>`;
+    }
     // 2. Ally Upgrade (Priority: Close to Ally)
+    else {
     let nearAlly = null;
     for(let ally of GAME.allies) {
         if(ally && ally.object3D && myPos.distanceTo(ally.object3D.position) < 3.5) {
@@ -148,8 +162,7 @@ _uCtrl.tick = function(t, dt) {
     else {
         prompt.style.display = 'none';
     }
-    
-    if(_origUTick) _origUTick.call(this, t, dt);
+    }
 };
 
 // Override Interact (V Key / Act Button)
@@ -160,6 +173,7 @@ _uCtrl.interactAction = function() {
          if (this.el.object3D.position.distanceTo(wellPos) < 6.0) attemptRevive();
          return;
     }
+    if (typeof tryUpgradeNearbyTrap === 'function' && tryUpgradeNearbyTrap(this.el, this)) return;
     
     let nearAlly = null;
     for(let ally of GAME.allies) {
@@ -199,7 +213,8 @@ _uCtrl.summonAlly = function() {
             spawnDamageText("Need 5 Gems", wellPos, true, false);
         }
     } else {
-        if(_origSummon) _origSummon.call(this);
+        if (typeof buildMoonTrap === 'function') buildMoonTrap(this);
+        else if(_origSummon) _origSummon.call(this);
         else if(GAME.gems >= 3) {
              GAME.gems -= 3; updateHUD(); this.playInteract(); 
              const el = document.createElement('a-entity'); 

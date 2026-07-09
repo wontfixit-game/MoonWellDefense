@@ -358,6 +358,185 @@ function spawnExplosion(pos, color, count) {
         setTimeout(() => { if (p.parentNode) p.parentNode.removeChild(p); }, 400);
     }
 }
+const MOON_TRAP = {
+    maxLevel: 3,
+    radius: [0, 3.2, 4.1, 5.0],
+    damage: [0, 80, 135, 205],
+    cooldown: [0, 2100, 1800, 1500],
+    slowMs: [0, 1400, 1800, 2300],
+    slowFactor: [0, 0.55, 0.42, 0.32]
+};
+
+function getNearbyTrap(pos, range) {
+    let closest = null;
+    let min = range;
+    (GAME.traps || []).forEach(trap => {
+        if (!trap || !trap.object3D || !trap.components['moon-trap']) return;
+        const d = pos.distanceTo(trap.object3D.position);
+        if (d < min) {
+            min = d;
+            closest = trap;
+        }
+    });
+    return closest;
+}
+
+function canPlaceMoonTrap(pos) {
+    if (Math.sqrt(pos.x * pos.x + pos.z * pos.z) > 44) return "Too far from the battlefield";
+    if (pos.distanceTo(document.getElementById('moon-well').object3D.position) < 6.5) return "Too close to the well";
+    for (let obs of GAME.obstacles) {
+        if (Math.sqrt((obs.x - pos.x) ** 2 + (obs.z - pos.z) ** 2) < (obs.r + 1.6)) return "Blocked";
+    }
+    if (getNearbyTrap(pos, 4.5)) return "Trap spacing";
+    return "";
+}
+
+function buildMoonTrap(builder) {
+    if (!GAME.active || GAME.paused || GAME.isAscending) return false;
+    const playerPos = builder.el.object3D.position.clone();
+    const existing = getNearbyTrap(playerPos, 3.8);
+    if (existing) return upgradeMoonTrap(existing, builder);
+
+    if (GAME.gems < GAME.trapCost) {
+        spawnDamageText(`Need ${GAME.trapCost} Gems`, playerPos, true, false);
+        return false;
+    }
+
+    const pos = playerPos.clone();
+    const dir = new THREE.Vector3();
+    builder.el.object3D.getWorldDirection(dir);
+    dir.y = 0;
+    if (dir.lengthSq() < 0.01) dir.set(0, 0, -1);
+    pos.add(dir.normalize().multiplyScalar(3.0));
+    pos.y = 0.06;
+
+    const reason = canPlaceMoonTrap(pos);
+    if (reason) {
+        spawnDamageText(reason, pos, true, false);
+        return false;
+    }
+
+    GAME.gems -= GAME.trapCost;
+    updateHUD();
+    builder.playInteract();
+
+    const trap = document.createElement('a-entity');
+    trap.setAttribute('position', pos);
+    trap.setAttribute('moon-trap', 'level: 1');
+    builder.el.sceneEl.appendChild(trap);
+    updateHUD();
+    spawnExplosion(pos, 0x66ccff, 18);
+    spawnDamageText("MOON SNARE", pos, false, true);
+    return true;
+}
+
+function upgradeMoonTrap(trap, builder) {
+    const logic = trap && trap.components['moon-trap'];
+    if (!logic) return false;
+    if (logic.data.level >= MOON_TRAP.maxLevel) {
+        spawnDamageText("Trap Maxed", trap.object3D.position, false, true);
+        return true;
+    }
+    if (GAME.gems < GAME.trapUpgradeCost) {
+        spawnDamageText(`Need ${GAME.trapUpgradeCost} Gems`, trap.object3D.position, true, false);
+        return false;
+    }
+    GAME.gems -= GAME.trapUpgradeCost;
+    logic.upgrade();
+    updateHUD();
+    if (builder && builder.playInteract) builder.playInteract();
+    return true;
+}
+
+function tryUpgradeNearbyTrap(originEl, builder) {
+    const trap = getNearbyTrap(originEl.object3D.position, 4.0);
+    if (!trap) return false;
+    return upgradeMoonTrap(trap, builder);
+}
+
+AFRAME.registerComponent('moon-trap', {
+    schema: { level: {type: 'number', default: 1} },
+    init: function() {
+        this.readyAt = 0;
+        this.lastPulse = 0;
+        this.triggering = false;
+        this.el.classList.add('moon-trap');
+        GAME.traps.push(this.el);
+        this.render();
+    },
+    remove: function() {
+        const idx = GAME.traps.indexOf(this.el);
+        if (idx > -1) GAME.traps.splice(idx, 1);
+    },
+    tick: function(t) {
+        if (!GAME.active || GAME.paused || this.triggering || t < this.readyAt) return;
+        const myPos = this.el.object3D.position;
+        const radius = MOON_TRAP.radius[this.data.level];
+        const target = (GAME.enemyHitboxes || []).find(hitbox => {
+            const enemy = hitbox && hitbox.userData && hitbox.userData.el;
+            return enemy && enemy.components['enemy-logic'] && enemy.object3D.position.distanceTo(myPos) <= radius;
+        });
+        if (target) this.fire(target.userData.el, t);
+    },
+    render: function() {
+        const level = this.data.level;
+        const color = level === 1 ? '#66ccff' : (level === 2 ? '#b388ff' : '#ffd700');
+        this.el.innerHTML = '';
+
+        const pad = document.createElement('a-cylinder');
+        pad.setAttribute('radius', 1.35 + level * 0.18);
+        pad.setAttribute('height', 0.12);
+        pad.setAttribute('material', `shader: flat; color: ${color}; transparent: true; opacity: 0.42`);
+        pad.setAttribute('shadow', 'receive: true');
+        this.el.appendChild(pad);
+
+        const core = document.createElement('a-cylinder');
+        core.setAttribute('radius', 0.45 + level * 0.08);
+        core.setAttribute('height', 0.22);
+        core.setAttribute('position', '0 0.12 0');
+        core.setAttribute('material', `shader: flat; color: #ffffff; emissive: ${color}; emissiveIntensity: 0.8`);
+        this.el.appendChild(core);
+
+        const ring = document.createElement('a-torus');
+        ring.setAttribute('radius', MOON_TRAP.radius[level]);
+        ring.setAttribute('radius-tubular', 0.025);
+        ring.setAttribute('rotation', '90 0 0');
+        ring.setAttribute('material', `shader: flat; color: ${color}; transparent: true; opacity: 0.22`);
+        this.el.appendChild(ring);
+    },
+    upgrade: function() {
+        this.data.level = Math.min(MOON_TRAP.maxLevel, this.data.level + 1);
+        this.render();
+        spawnExplosion(this.el.object3D.position, 0xffd700, 24);
+        spawnDamageText(`TRAP LV ${this.data.level}`, this.el.object3D.position, false, true);
+    },
+    fire: function(enemyEl, t) {
+        const level = this.data.level;
+        this.triggering = true;
+        this.readyAt = t + MOON_TRAP.cooldown[level];
+        const pos = this.el.object3D.position.clone();
+        pos.y += 0.3;
+
+        spawnExplosion(pos, level === 3 ? 0xffd700 : 0x66ccff, 24 + level * 8);
+        spawnDamageText("SNARED", enemyEl.object3D.position, true, false);
+
+        const logic = enemyEl.components['enemy-logic'];
+        const killed = logic.hit(MOON_TRAP.damage[level]);
+        if (killed) {
+            GAME.trapKills++;
+            updateHUD();
+        } else {
+            logic.trapSlowUntil = Date.now() + MOON_TRAP.slowMs[level];
+            logic.trapSlowFactor = MOON_TRAP.slowFactor[level];
+            const shove = enemyEl.object3D.position.clone().sub(this.el.object3D.position);
+            shove.y = 0;
+            if (shove.lengthSq() > 0.01) enemyEl.object3D.position.add(shove.normalize().multiplyScalar(0.9 + level * 0.25));
+        }
+
+        this.el.setAttribute('animation__pulse', 'property: scale; from: 1 1 1; to: 1.18 1.18 1.18; dir: alternate; dur: 140; loop: 2; easing: easeOutQuad');
+        setTimeout(() => { this.triggering = false; }, 180);
+    }
+});
 function triggerCameraShake(intensity, duration) {
     const pivot = document.getElementById('cam-pivot');
     if (!pivot || !pivot.object3D) return;
@@ -379,7 +558,7 @@ function triggerCameraShake(intensity, duration) {
     };
     shake();
 }
-function updateHUD() { try { document.querySelector('#hp-bar .bar-fill').style.width = Math.max(0, (GAME.playerHP/GAME.maxPlayerHP)*100) + '%'; document.querySelector('#well-bar .bar-fill').style.width = Math.max(0, (GAME.wellHP/GAME.maxWellHP)*100) + '%'; document.querySelector('#ascend-bar .bar-fill').style.width = Math.max(0, (GAME.ascension/GAME.maxAscension)*100) + '%'; document.getElementById('wave-text').innerText = GAME.wave; document.getElementById('stat-dmg').innerText = (GAME.dmgMultiplier*100).toFixed(0) + "%"; document.getElementById('stat-arr').innerText = GAME.arrowsPerShot; document.getElementById('stat-fire').innerText = GAME.fireLevel; document.getElementById('stat-zap').innerText = GAME.zapLevel; document.getElementById('gem-text').innerText = GAME.gems; const mgr = document.querySelector('[game-logic]'); const toSpawn = (mgr && mgr.components['game-logic']) ? mgr.components['game-logic'].toSpawn : GAME.toSpawn; document.getElementById('enemy-text').innerText = GAME.enemyHitboxes.length + toSpawn; } catch(e) {} }
+function updateHUD() { try { document.querySelector('#hp-bar .bar-fill').style.width = Math.max(0, (GAME.playerHP/GAME.maxPlayerHP)*100) + '%'; document.querySelector('#well-bar .bar-fill').style.width = Math.max(0, (GAME.wellHP/GAME.maxWellHP)*100) + '%'; document.querySelector('#ascend-bar .bar-fill').style.width = Math.max(0, (GAME.ascension/GAME.maxAscension)*100) + '%'; document.getElementById('wave-text').innerText = GAME.wave; document.getElementById('stat-dmg').innerText = (GAME.dmgMultiplier*100).toFixed(0) + "%"; document.getElementById('stat-arr').innerText = GAME.arrowsPerShot; document.getElementById('stat-fire').innerText = GAME.fireLevel; document.getElementById('stat-zap').innerText = GAME.zapLevel; document.getElementById('gem-text').innerText = GAME.gems; const trapCount = document.getElementById('trap-count'); if (trapCount) trapCount.innerText = (GAME.traps || []).length; const trapKills = document.getElementById('trap-kills'); if (trapKills) trapKills.innerText = GAME.trapKills || 0; const mgr = document.querySelector('[game-logic]'); const toSpawn = (mgr && mgr.components['game-logic']) ? mgr.components['game-logic'].toSpawn : GAME.toSpawn; document.getElementById('enemy-text').innerText = GAME.enemyHitboxes.length + toSpawn; } catch(e) {} }
 const mapCanvas = document.getElementById('minimap-canvas'); const mapCtx = mapCanvas.getContext('2d'); const MAP_RADIUS = 60; const MAP_SIZE = 150; 
 function updateMinimap() { try { mapCtx.clearRect(0, 0, MAP_SIZE, MAP_SIZE); const cx = MAP_SIZE / 2; const cy = MAP_SIZE / 2; const scale = (MAP_SIZE / 2) / MAP_RADIUS; mapCtx.fillStyle = '#00d2ff'; mapCtx.beginPath(); mapCtx.arc(cx, cy, 4, 0, Math.PI*2); mapCtx.fill(); mapCtx.fillStyle = '#ff0000'; const validEnemies = GAME.enemyHitboxes.filter(h => h && h.userData && h.userData.el && h.userData.el.object3D && h.userData.el.components['enemy-logic']); validEnemies.forEach(hitbox => { const pos = hitbox.userData.el.object3D.position; mapCtx.beginPath(); mapCtx.arc(cx + pos.x * scale, cy + pos.z * scale, 2.5, 0, Math.PI*2); mapCtx.fill(); }); mapCtx.fillStyle = '#880000'; const boss = GAME.enemyHitboxes.find(h => h && h.userData && h.userData.el && h.userData.el.components['boss-logic']); if (boss) { const pos = boss.userData.el.object3D.position; mapCtx.beginPath(); mapCtx.arc(cx + pos.x * scale, cy + pos.z * scale, 6, 0, Math.PI*2); mapCtx.fill(); } const playerEl = document.querySelector('#player'); if (playerEl) { const pPos = playerEl.object3D.position; const pRot = playerEl.object3D.rotation.y; const px = cx + pPos.x * scale; const py = cy + pPos.z * scale; mapCtx.save(); mapCtx.translate(px, py); mapCtx.rotate(-pRot); mapCtx.fillStyle = '#00ff00'; mapCtx.beginPath(); mapCtx.moveTo(0, -5); mapCtx.lineTo(4, 4); mapCtx.lineTo(-4, 4); mapCtx.fill(); mapCtx.restore(); } } catch(e) {} }
 function togglePause() { if (!GAME.active) return; GAME.paused = !GAME.paused; const menu = document.getElementById('pause-menu'); if (GAME.paused) { menu.style.display = 'flex'; document.exitPointerLock(); } else { menu.style.display = 'none'; if (!GAME.isMobile && GAME.camMode !== 2) document.body.requestPointerLock(); } }
