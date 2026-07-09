@@ -46,6 +46,7 @@ window.addEventListener('keyup', e => this.keys[e.code] = false);
 // --- MOUSE CONTROLS (DESKTOP) ---
 document.addEventListener('mousedown', (e) => {
     if(!GAME.active || GAME.paused || GAME.isMobile) return;
+    if(window.TRAP_BUILDER && window.TRAP_BUILDER.active) return; // build mode handles clicks
     this.triggerHeld = true; // 標記為按住
     
     if(this.camMode === 2) {
@@ -495,6 +496,7 @@ if(this.lastState !== newState) {
 
     shoot: function() {
 if (!GAME.active || GAME.paused) return;
+if (window.TRAP_BUILDER && window.TRAP_BUILDER.active) return;
 
 // Trigger Animation
 this.isFiringAnim = true;

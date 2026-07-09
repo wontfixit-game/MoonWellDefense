@@ -156,7 +156,7 @@
                 DMG: <span id="stat-dmg">100%</span> | SHOT: <span id="stat-arr">1</span><br>
                 FIRE: <span id="stat-fire">0</span> | ZAP: <span id="stat-zap">0</span>
             </div>
-            <div style="font-size: 10px; color: #ffd700; margin-top: 5px; font-style: italic;">[V] at Well: +10% (5G)<br>[C] Toggle View</div>
+            <div style="font-size: 10px; color: #ffd700; margin-top: 5px; font-style: italic;">[V] at Well: +10% (5G)<br>[C] Toggle View | [T] Build Traps</div>
         </div>
         
         <div id="minimap-container"><canvas id="minimap-canvas" width="150" height="150"></canvas></div>
@@ -260,6 +260,7 @@
         </a-entity>
 
         <a-entity id="game-manager" game-logic></a-entity>
+        <a-entity id="trap-builder-manager" trap-builder></a-entity>
         <a-entity id="projectile-container"></a-entity>
     </a-scene>
 
@@ -282,6 +283,7 @@
     <script src="js/components/player.js?v=6"></script>
     <script src="js/components/combat.js?v=6"></script>
     <script src="js/components/enemies.js?v=6"></script>
+    <script src="js/systems/traps.js?v=6"></script>
     <script src="js/game-flow.js?v=6"></script>
     <script src="js/bootstrap.js?v=6"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
