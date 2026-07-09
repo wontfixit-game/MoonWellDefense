@@ -243,7 +243,41 @@ h1:active { transform: scale(0.98); }
     box-shadow: 0 0 20px rgba(255, 255, 255, 0.4) !important;
 }
 /* Hide default background colors for clean glass look */
-#build-btn, #interact-btn, #cam-btn { background-color: transparent; }
+#build-btn, #interact-btn, #cam-btn, #trap-btn { background-color: transparent; }
+
+/* --- TRAP BUILDING (Orcs-Must-Die-style defenses) --- */
+#trap-hotbar {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 10px; z-index: 30; padding: 8px; border-radius: 10px;
+    background: rgba(5, 5, 10, 0.55); border: 1px solid rgba(255, 215, 0, 0.25);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+#trap-hotbar.active { border-color: #ffd700; box-shadow: 0 0 25px rgba(255, 215, 0, 0.35); }
+.trap-slot {
+    width: 78px; padding: 8px 4px; border-radius: 6px; text-align: center; cursor: pointer;
+    background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #eee; font-family: 'Cinzel', serif; transition: all 0.15s;
+}
+.trap-slot:hover { background: rgba(255, 255, 255, 0.14); }
+.trap-slot.selected { border-color: #00ff88; box-shadow: 0 0 12px rgba(0, 255, 136, 0.5); background: rgba(0, 255, 136, 0.12); }
+.trap-slot .trap-key { font-size: 10px; color: #ffd700; font-weight: bold; }
+.trap-slot .trap-icon { font-size: 20px; line-height: 1.4; }
+.trap-slot .trap-name { font-size: 9px; letter-spacing: 0.5px; text-transform: uppercase; }
+.trap-slot .trap-cost { font-size: 11px; color: #00ff88; font-weight: bold; margin-top: 2px; }
+.trap-slot.build-toggle { border-color: rgba(255, 100, 100, 0.4); }
+#trap-hotbar.active .trap-slot.build-toggle { border-color: #27ae60; box-shadow: 0 0 12px rgba(39, 174, 96, 0.5); }
+#build-mode-banner {
+    display: none; position: absolute; top: 15%; left: 50%; transform: translateX(-50%);
+    color: #00ff88; font-family: 'Cinzel', serif; font-size: 18px; letter-spacing: 1px;
+    text-shadow: 0 0 10px #00ff88, 2px 2px 3px #000; z-index: 30; pointer-events: none; text-align: center;
+}
+@media (max-width: 768px) {
+    #trap-hotbar { bottom: 150px; gap: 6px; padding: 6px; }
+    .trap-slot { width: 56px; padding: 5px 2px; }
+    .trap-slot .trap-icon { font-size: 16px; }
+    .trap-slot .trap-name { font-size: 7px; }
+    #build-mode-banner { font-size: 14px; top: 12%; }
+}
 
 /* Dynamic Joystick Styles */
 #stick-zone { 

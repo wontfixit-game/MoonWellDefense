@@ -79,6 +79,7 @@ AFRAME.registerComponent('enemy-logic', {
         });
         
         let speed = this.dataDef.speed; if(this.data.isElite) speed *= 1.2; 
+        if (this.slowFactor && Date.now() < this.slowUntil) speed *= this.slowFactor;
         
         if (minD > stopRange) { 
             // Move

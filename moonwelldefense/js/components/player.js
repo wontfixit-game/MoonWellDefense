@@ -45,7 +45,7 @@ window.addEventListener('keyup', e => this.keys[e.code] = false);
 
 // --- MOUSE CONTROLS (DESKTOP) ---
 document.addEventListener('mousedown', (e) => {
-    if(!GAME.active || GAME.paused || GAME.isMobile) return;
+    if(!GAME.active || GAME.paused || GAME.isMobile || GAME.buildMode) return;
     this.triggerHeld = true; // 標記為按住
     
     if(this.camMode === 2) {
@@ -61,7 +61,7 @@ document.addEventListener('mousedown', (e) => {
 });
 
 document.addEventListener('mouseup', (e) => {
-    if(!GAME.active || GAME.paused || GAME.isMobile) return;
+    if(!GAME.active || GAME.paused || GAME.isMobile || GAME.buildMode) return;
     this.triggerHeld = false; // 釋放按鍵
     
     if(this.camMode === 2) {
@@ -102,6 +102,7 @@ if (GAME.isMobile) {
 const btnB = document.getElementById('build-btn'); if(btnB) btnB.addEventListener('click', () => this.summonAlly());
 const btnF = document.getElementById('interact-btn'); if(btnF) btnF.addEventListener('click', () => this.interactAction());
 const btnC = document.getElementById('cam-btn'); if(btnC) btnC.addEventListener('click', () => this.toggleCamera());
+const btnT = document.getElementById('trap-btn'); if(btnT) btnT.addEventListener('click', () => { const tb = document.querySelector('[trap-builder]'); if(tb && tb.components['trap-builder']) tb.components['trap-builder'].toggle(); });
 
 GAME.lastShotTime = Date.now();
     },
@@ -212,6 +213,7 @@ const shootKnob = document.getElementById('shoot-knob');
 let aimId = null; 
 
 shootBtn.addEventListener('touchstart', e => { 
+    if(GAME.buildMode) return;
     e.preventDefault(); e.stopPropagation(); 
     for(let t of e.changedTouches) if(aimId===null) { 
         aimId=t.identifier; 

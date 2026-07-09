@@ -10,8 +10,19 @@ const GAME = {
     enemyHitboxes: [], allies: [], allyHitboxes: [], obstacles: [], trees: [], lastAttacker: null,
     shardsEarnedThisRun: 0, magnetRange: 2.0, allyCmdState: 0,
     // --- 新增以下兩個變數 ---
-    combo: 0, comboTimer: 0
+    combo: 0, comboTimer: 0,
+    // --- Trap-building (Orcs Must Die style defense) ---
+    buildMode: false, selectedTrapType: 'spike', traps: [], maxTraps: 40
 };
+
+// Trap definitions for the build-mode defense system.
+const TRAPS = {
+    spike:  { name: 'Spike Trap', key: '1', icon: '\u25B2', cost: 8,  cooldown: 2200, radius: 1.6, damage: 70,  color: '#cccccc', desc: 'Bursts damage on foes standing near' },
+    tar:    { name: 'Tar Patch',  key: '2', icon: '\u25CF', cost: 6,  cooldown: 0,    radius: 2.0, slowFactor: 0.35, slowDuration: 1000, color: '#2a1a0a', desc: 'Slows any foe standing in it' },
+    arrow:  { name: 'Arrow Wall', key: '3', icon: '\u27A4', cost: 10, cooldown: 1400, radius: 9.0, damage: 45,  color: '#c98a3a', desc: 'Fires bolts at foes down the lane' },
+    fire:   { name: 'Fire Vent',  key: '4', icon: '\u2727', cost: 14, cooldown: 2600, radius: 2.2, damage: 90,  color: '#ff5500', desc: 'Erupts in flame, burning foes' }
+};
+const TRAP_ORDER = ['spike', 'tar', 'arrow', 'fire'];
 
 function initGame() { 
     try {
